@@ -344,7 +344,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     final tr = ref.watch(translationProvider).tr;
-    
     final List<Map<String, dynamic>> pages = [
       {
         'icon': Icons.security_rounded,
@@ -365,6 +364,24 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
     return Column(
       children: [
+        Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          alignment: Alignment.topLeft,
+          child: _currentPage < pages.length - 1
+              ? TextButton(
+                  onPressed: widget.onNext,
+                  child: Text(
+                    tr('skip'),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                )
+              : null,
+        ),
         Expanded(
           child: PageView.builder(
             controller: _controller,
@@ -429,30 +446,46 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           child: Column(
             children: [
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: widget.onNext,
-                  child: Text(tr('signup_btn'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: OutlinedButton(
-                  onPressed: widget.onLogin,
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              if (_currentPage < pages.length - 1)
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      _controller.nextPage(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.ease,
+                      );
+                    },
+                    child: Text(tr('next_btn'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   ),
-                  child: Text(
-                    tr('login_btn'),
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary),
+                )
+              else ...[
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton(
+                    onPressed: widget.onNext,
+                    child: Text(tr('signup_btn'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   ),
                 ),
-              ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: OutlinedButton(
+                    onPressed: widget.onLogin,
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                    child: Text(
+                      tr('login_btn'),
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary),
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
             ],
           ),

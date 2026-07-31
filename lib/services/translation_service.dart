@@ -74,6 +74,11 @@ class TranslationService {
       'fr': 'Passer à la démo',
       'en': 'Skip to Demo'
     },
+    'skip': {
+      'ar': 'تخطي',
+      'fr': 'Passer',
+      'en': 'Skip'
+    },
     'splash_subtitle': {
       'ar': 'توصيل آمن وموثوق.. من النساء وإلى النساء',
       'fr': 'Transport sûr et fiable.. Par des femmes, pour des femmes',
