@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "776886801199",
+    "project_id": "dora-app-e21be",
+    "storage_bucket": "dora-app-e21be.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:776886801199:android:1adc464d984fd4caf647da",
+        "android_client_info": {
+          "package_name": "com.example.doraa"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCicrI1_D92mFmL2s8SSbnFx5KoHKgjFqk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
