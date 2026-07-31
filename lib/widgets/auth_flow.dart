@@ -524,7 +524,6 @@ class PhoneOtpScreen extends ConsumerWidget {
             child: Text(tr('verify_code_btn')),
           ),
         ],
-      ),
     );
   }
 }
@@ -609,7 +608,6 @@ class _EmailPasswordScreenState extends ConsumerState<EmailPasswordScreen> {
           const SizedBox(height: 32),
           ElevatedButton(onPressed: widget.onNext, child: Text(tr('continue_registration'))),
         ],
-      ),
     );
   }
 }
@@ -707,7 +705,6 @@ class PersonalInfoScreen extends ConsumerWidget {
           const SizedBox(height: 48),
           ElevatedButton(onPressed: onNext, child: Text(tr('next_btn'))),
         ],
-      ),
     );
   }
 }
