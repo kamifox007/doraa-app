@@ -42,7 +42,7 @@ dependencies:
   geolocator: ^13.0.0
   geocoding: ^3.0.0
   google_fonts: ^8.2.0
-  record: ^5.0.5
+  record: ^7.1.1
   audioplayers: ^6.1.0
   path_provider: ^2.1.4
   firebase_core: ^4.12.1
