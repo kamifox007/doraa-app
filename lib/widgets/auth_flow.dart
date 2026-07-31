@@ -481,10 +481,9 @@ class PhoneOtpScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tr = ref.watch(translationProvider).tr;
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Icon(Icons.phone_android_rounded, size: 80, color: Colors.grey),
@@ -563,10 +562,9 @@ class _EmailPasswordScreenState extends ConsumerState<EmailPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     final tr = ref.watch(translationProvider).tr;
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Icon(Icons.lock_person_rounded, size: 80, color: Colors.grey),
@@ -826,10 +824,9 @@ class DocumentsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tr = ref.watch(translationProvider).tr;
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Icon(Icons.document_scanner_rounded, size: 80, color: Colors.grey),
