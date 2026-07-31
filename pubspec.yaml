@@ -55,10 +55,8 @@ dependencies:
   flutter_image_compress: ^2.5.1
   cached_network_image: ^3.4.1
   image_picker: ^1.2.3
-  flutter_jailbreak_detection: any
   flutter_secure_storage: any
   local_auth: any
-  flutter_windowmanager: any
   device_info_plus: any
   crypto: any
   hive_flutter: any
