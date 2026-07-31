@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_jailbreak_detection/flutter_jailbreak_detection.dart';
-import 'package:flutter/foundation.dart'; // For kIsWeb
 
 class SecurityCheck {
   static Future<bool> isDeviceSecure() async {
