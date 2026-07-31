@@ -3,8 +3,18 @@ name: Flutter CI
 on:
   push:
     branches: [ "main", "master" ]
-  pull_request:
-    branches: [ "main", "master" ]
+  workflow_dispatch:
+    inputs:
+      build_web:
+        description: 'Build Web Version'
+        required: true
+        default: true
+        type: boolean
+      build_apk:
+        description: 'Build Android APK Version'
+        required: true
+        default: false
+        type: boolean
 
 jobs:
   build:
@@ -22,25 +32,29 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.5' # Use the version you prefer
+          flutter-version: '3.24.5'
           channel: 'stable'
 
       - name: Install dependencies
         run: flutter pub get
 
       - name: Build Web
+        if: ${{ github.event_name == 'push' || github.event.inputs.build_web == 'true' }}
         run: flutter build web
 
       - name: Build APK
+        if: ${{ github.event_name == 'push' || github.event.inputs.build_apk == 'true' }}
         run: flutter build apk --release
 
       - name: Upload APK
+        if: ${{ github.event_name == 'push' || github.event.inputs.build_apk == 'true' }}
         uses: actions/upload-artifact@v3
         with:
           name: release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
 
       - name: Upload Web
+        if: ${{ github.event_name == 'push' || github.event.inputs.build_web == 'true' }}
         uses: actions/upload-artifact@v3
         with:
           name: web-build
