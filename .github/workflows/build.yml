@@ -17,9 +17,33 @@ on:
         type: boolean
 
 jobs:
-  build:
+  build_web:
+    if: ${{ github.event_name == 'push' || github.event.inputs.build_web == 'true' }}
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'any'
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Web
+        run: flutter build web
+
+      - name: Upload Web
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: build/web/
+
+  build_apk:
+    if: ${{ github.event_name == 'push' || github.event.inputs.build_apk == 'true' }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -38,31 +62,14 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Patch flutter_jailbreak_detection namespace
-        run: |
-          BUILD_GRADLE="/home/runner/.pub-cache/hosted/pub.dev/flutter_jailbreak_detection-1.10.0/android/build.gradle"
-          if [ -f "$BUILD_GRADLE" ]; then
-            sed -i 's/android {/android {\n    namespace "com.wz.flutter_jailbreak_detection"/' "$BUILD_GRADLE"
-          fi
-
-      - name: Build Web
-        if: ${{ github.event_name == 'push' || github.event.inputs.build_web == 'true' }}
-        run: flutter build web
-
       - name: Build APK
-        if: ${{ github.event_name == 'push' || github.event.inputs.build_apk == 'true' }}
-        run: flutter build apk --release
+        run: |
+          flutter clean
+          flutter pub get
+          flutter build apk --release
 
       - name: Upload APK
-        if: ${{ github.event_name == 'push' || github.event.inputs.build_apk == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
-
-      - name: Upload Web
-        if: ${{ github.event_name == 'push' || github.event.inputs.build_web == 'true' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: web-build
-          path: build/web/
