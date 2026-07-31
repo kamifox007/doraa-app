@@ -481,11 +481,9 @@ class PhoneOtpScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tr = ref.watch(translationProvider).tr;
-    return SingleChildScrollView(
+    return ListView(
       padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+      children: [
           const Icon(Icons.phone_android_rounded, size: 80, color: Colors.grey),
           const SizedBox(height: 32),
           Text(tr('confirm_phone_title'), style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold), textAlign: TextAlign.center),
@@ -562,11 +560,9 @@ class _EmailPasswordScreenState extends ConsumerState<EmailPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     final tr = ref.watch(translationProvider).tr;
-    return SingleChildScrollView(
+    return ListView(
       padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+      children: [
           const Icon(Icons.lock_person_rounded, size: 80, color: Colors.grey),
           const SizedBox(height: 32),
           Text(tr('setup_password_title'), style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold), textAlign: TextAlign.center),
@@ -642,11 +638,9 @@ class PersonalInfoScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tr = ref.watch(translationProvider).tr;
     final wilayas = ValidationService.getAlgerianWilayas();
-    return SingleChildScrollView(
+    return ListView(
       padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+      children: [
           const SizedBox(height: 48),
           Text(tr('personal_info_title'), style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),

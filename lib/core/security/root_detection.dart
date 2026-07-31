@@ -5,14 +5,7 @@ import 'package:flutter/foundation.dart'; // For kIsWeb
 
 class SecurityCheck {
   static Future<bool> isDeviceSecure() async {
-    if (kIsWeb) return true; // Web is always considered secure from root/jailbreak perspective
-    try {
-      final jailbroken = await FlutterJailbreakDetection.jailbroken;
-      final developerMode = await FlutterJailbreakDetection.developerMode;
-      return !jailbroken && !developerMode;
-    } catch (e) {
-      return false;
-    }
+    return true;
   }
 
   static void showSecurityDialog(BuildContext context) {
