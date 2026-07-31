@@ -16,7 +16,6 @@ class TranslationService {
 
   // القاموس المركزي للتطبيق
   static const Map<String, Map<String, String>> _dict = {
-    // HomePage
     'app_name': {
       'ar': 'Doraa - دورة',
       'fr': 'Doraa',
@@ -26,6 +25,26 @@ class TranslationService {
       'ar': 'تطبيق التوصيل الآمن للسيدات',
       'fr': 'L\'application de transport sécurisé pour les femmes',
       'en': 'Secure ride-hailing app for women'
+    },
+    'skip': {
+      'ar': 'تخطي',
+      'fr': 'Passer',
+      'en': 'Skip'
+    },
+    'resend_code': {
+      'ar': 'إعادة إرسال الرمز',
+      'fr': 'Renvoyer le code',
+      'en': 'Resend Code'
+    },
+    'resend_in': {
+      'ar': 'إعادة إرسال خلال',
+      'fr': 'Renvoyer dans',
+      'en': 'Resend in'
+    },
+    'splash_subtitle': {
+      'ar': 'توصيل آمن وموثوق.. من النساء وإلى النساء',
+      'fr': 'Transport sûr et fiable.. Par des femmes, pour des femmes',
+      'en': 'Safe and reliable transport.. By women, for women'
     },
     'db_status': {
       'ar': 'قاعدة البيانات (Supabase)',
@@ -74,12 +93,7 @@ class TranslationService {
       'fr': 'Passer à la démo',
       'en': 'Skip to Demo'
     },
-    'skip': {
-      'ar': 'تخطي',
-      'fr': 'Passer',
-      'en': 'Skip'
-    },
-    'splash_subtitle': {
+
       'ar': 'توصيل آمن وموثوق.. من النساء وإلى النساء',
       'fr': 'Transport sûr et fiable.. Par des femmes, pour des femmes',
       'en': 'Safe and reliable transport.. By women, for women'

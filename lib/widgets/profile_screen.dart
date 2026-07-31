@@ -327,7 +327,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.grey),
                           ),
 
-                          if (_userRole == 'admin' || true) ...{
+                          if (_userRole == 'admin') ...{
                             const Divider(height: 1, indent: 20),
                             ListTile(
                               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminDashboardScreen())),

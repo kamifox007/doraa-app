@@ -729,6 +729,74 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
     );
   }
 
+  Future<void> _addPromoCode(String code, double amount, String expiresAt) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final tr = ref.read(translationProvider).tr;
+    try {
+      await _client.from('promo_codes').insert({
+        'code': code.toUpperCase(),
+        'discount_amount': amount,
+        'expires_at': expiresAt,
+        'is_active': true,
+      });
+      messenger.showSnackBar(SnackBar(content: Text('تمت إضافة كود الخصم بنجاح!'), backgroundColor: Colors.green));
+      _fetchPromoCodes();
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('${tr('error_occurred_prefix')} $e'), backgroundColor: Colors.red));
+    }
+  }
+
+  Future<void> _togglePromoCode(String promoId, bool currentStatus) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final tr = ref.read(translationProvider).tr;
+    try {
+      await _client.from('promo_codes').update({'is_active': !currentStatus}).eq('id', promoId);
+      _fetchPromoCodes();
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('${tr('error_occurred_prefix')} $e'), backgroundColor: Colors.red));
+    }
+  }
+
+  void _showAddPromoDialog() {
+    final codeCtrl = TextEditingController();
+    final amountCtrl = TextEditingController();
+    final daysCtrl = TextEditingController(text: '30');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('إضافة كود خصم جديد'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: codeCtrl, decoration: const InputDecoration(labelText: 'رمز الخصم (مثال: DORA2026)', border: OutlineInputBorder())),
+            const SizedBox(height: 12),
+            TextField(controller: amountCtrl, decoration: const InputDecoration(labelText: 'قيمة الخصم (دج)', border: OutlineInputBorder()), keyboardType: TextInputType.number),
+            const SizedBox(height: 12),
+            TextField(controller: daysCtrl, decoration: const InputDecoration(labelText: 'صلاحية الكود (بالأيام)', border: OutlineInputBorder()), keyboardType: TextInputType.number),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+          ElevatedButton(
+            onPressed: () {
+              final code = codeCtrl.text.trim();
+              final amount = double.tryParse(amountCtrl.text);
+              final days = int.tryParse(daysCtrl.text) ?? 30;
+              if (code.isNotEmpty && amount != null && amount > 0) {
+                Navigator.pop(ctx);
+                final expiresAt = DateTime.now().add(Duration(days: days)).toIso8601String();
+                _addPromoCode(code, amount, expiresAt);
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00897B)),
+            child: const Text('إضافة الكود'),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ══════════════════════════════════════
   // Tab: الخصومات
   // ══════════════════════════════════════
@@ -740,13 +808,13 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
         Padding(
           padding: const EdgeInsets.all(16),
           child: ElevatedButton.icon(
-            onPressed: () {
-              // سيتم لاحقاً: فتح ديالوج لإضافة كود خصم جديد
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('feature_coming_soon'))));
-            },
-            icon: const Icon(Icons.add),
-            label: Text(tr('create_new_promo_code')),
-            style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
+            onPressed: _showAddPromoDialog,
+            icon: const Icon(Icons.add, color: Colors.white),
+            label: Text(tr('create_new_promo_code'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF00897B),
+              minimumSize: const Size(double.infinity, 50),
+            ),
           ),
         ),
         Expanded(
@@ -756,15 +824,15 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
                   itemCount: _promoCodes.length,
                   itemBuilder: (ctx, i) {
                     final p = _promoCodes[i];
+                    final isActive = p['is_active'] ?? true;
                     return ListTile(
-                      leading: const Icon(Icons.local_offer, color: Colors.green),
-                      title: Text(p['code'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Text('${tr('discount_amount_label')} ${p['discount_amount']} دج | ${tr('validity_label')} ${p['expires_at']}'),
+                      leading: Icon(Icons.local_offer, color: isActive ? Colors.green : Colors.grey),
+                      title: Text(p['code'] ?? '', style: TextStyle(fontWeight: FontWeight.bold, color: isActive ? Colors.black : Colors.grey)),
+                      subtitle: Text('${tr('discount_amount_label')} ${p['discount_amount']} دج'),
                       trailing: Switch(
-                        value: p['is_active'] ?? true,
-                        onChanged: (val) {
-                          // سيتم لاحقاً: Toggle active status in DB
-                        },
+                        value: isActive,
+                        activeColor: const Color(0xFF00897B),
+                        onChanged: (val) => _togglePromoCode(p['id'].toString(), isActive),
                       ),
                     );
                   },

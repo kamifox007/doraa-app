@@ -589,58 +589,134 @@ class _EmailPasswordScreenState extends ConsumerState<EmailPasswordScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
+  double _calculatePasswordStrength(String password) {
+    if (password.isEmpty) return 0.0;
+    double strength = 0.0;
+    if (password.length >= 8) strength += 0.35;
+    if (RegExp(r'[A-Z]').hasMatch(password)) strength += 0.35;
+    if (RegExp(r'\d').hasMatch(password)) strength += 0.30;
+    return strength;
+  }
+
+  Color _getStrengthColor(double strength) {
+    if (strength <= 0.35) return Colors.red;
+    if (strength <= 0.70) return Colors.orange;
+    return Colors.green;
+  }
+
+  String _getStrengthText(double strength, Map<String, dynamic> Function(String) tr) {
+    if (strength <= 0.35) return tr('weak') != 'weak' ? tr('weak') : 'ضعيفة';
+    if (strength <= 0.70) return tr('medium') != 'medium' ? tr('medium') : 'متوسطة';
+    return tr('strong') != 'strong' ? tr('strong') : 'قوية';
+  }
+
   @override
   Widget build(BuildContext context) {
     final tr = ref.watch(translationProvider).tr;
+    final strength = _calculatePasswordStrength(widget.password);
+    final passwordsMatch = widget.password.isNotEmpty && widget.password == widget.confirmPassword;
+
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-          const Icon(Icons.lock_person_rounded, size: 80, color: Colors.grey),
-          const SizedBox(height: 32),
-          Text(tr('setup_password_title'), style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+        const Icon(Icons.lock_person_rounded, size: 80, color: Color(0xFFE91E63)),
+        const SizedBox(height: 32),
+        Text(tr('setup_password_title'), style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+        const SizedBox(height: 8),
+        Text(tr('setup_password_desc'), textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey)),
+        const SizedBox(height: 32),
+        TextFormField(
+          initialValue: widget.email,
+          keyboardType: TextInputType.emailAddress,
+          decoration: InputDecoration(
+            labelText: tr('email_optional'),
+            prefixIcon: const Icon(Icons.email_outlined),
+          ),
+          onChanged: widget.onEmailChanged,
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          initialValue: widget.password,
+          obscureText: _obscurePassword,
+          decoration: InputDecoration(
+            labelText: tr('password_label'),
+            prefixIcon: const Icon(Icons.lock_outline),
+            suffixIcon: IconButton(
+              icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off),
+              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+            ),
+          ),
+          onChanged: widget.onPasswordChanged,
+        ),
+        if (widget.password.isNotEmpty) ...[
           const SizedBox(height: 8),
-          Text(tr('setup_password_desc'), textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey)),
-          const SizedBox(height: 32),
-          TextFormField(
-            initialValue: widget.email,
-            keyboardType: TextInputType.emailAddress,
-            decoration: InputDecoration(
-              labelText: tr('email_optional'),
-              prefixIcon: const Icon(Icons.email_outlined),
-            ),
-            onChanged: widget.onEmailChanged,
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
-            initialValue: widget.password,
-            obscureText: _obscurePassword,
-            decoration: InputDecoration(
-              labelText: tr('password_label'),
-              prefixIcon: const Icon(Icons.lock_outline),
-              suffixIcon: IconButton(
-                icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off),
-                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+          Row(
+            children: [
+              Expanded(
+                child: LinearProgressIndicator(
+                  value: strength,
+                  backgroundColor: Colors.grey.shade200,
+                  color: _getStrengthColor(strength),
+                  minHeight: 6,
+                  borderRadius: BorderRadius.circular(4),
+                ),
               ),
-            ),
-            onChanged: widget.onPasswordChanged,
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
-            initialValue: widget.confirmPassword,
-            obscureText: _obscureConfirmPassword,
-            decoration: InputDecoration(
-              labelText: tr('confirm_password_label'),
-              prefixIcon: const Icon(Icons.lock_outline),
-              suffixIcon: IconButton(
-                icon: Icon(_obscureConfirmPassword ? Icons.visibility : Icons.visibility_off),
-                onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+              const SizedBox(width: 12),
+              Text(
+                _getStrengthText(strength, tr),
+                style: TextStyle(color: _getStrengthColor(strength), fontWeight: FontWeight.bold, fontSize: 12),
               ),
-            ),
-            onChanged: widget.onConfirmPasswordChanged,
+            ],
           ),
-          const SizedBox(height: 32),
-          ElevatedButton(onPressed: widget.onNext, child: Text(tr('continue_registration'))),
         ],
+        const SizedBox(height: 16),
+        TextFormField(
+          initialValue: widget.confirmPassword,
+          obscureText: _obscureConfirmPassword,
+          decoration: InputDecoration(
+            labelText: tr('confirm_password_label'),
+            prefixIcon: const Icon(Icons.lock_outline),
+            suffixIcon: IconButton(
+              icon: Icon(_obscureConfirmPassword ? Icons.visibility : Icons.visibility_off),
+              onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+            ),
+          ),
+          onChanged: widget.onConfirmPasswordChanged,
+        ),
+        if (widget.confirmPassword.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(
+                passwordsMatch ? Icons.check_circle : Icons.cancel,
+                size: 16,
+                color: passwordsMatch ? Colors.green : Colors.red,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                passwordsMatch ? (tr('passwords_match') != 'passwords_match' ? tr('passwords_match') : 'كلمتا المرور متطابقتان') : (tr('passwords_mismatch') != 'passwords_mismatch' ? tr('passwords_mismatch') : 'كلمتا المرور غير متطابقتين'),
+                style: TextStyle(color: passwordsMatch ? Colors.green : Colors.red, fontSize: 12),
+              ),
+            ],
+          ),
+        ],
+        const SizedBox(height: 32),
+        ElevatedButton(
+          onPressed: () {
+            if (widget.password.isNotEmpty && widget.password != widget.confirmPassword) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(tr('passwords_mismatch') != 'passwords_mismatch' ? tr('passwords_mismatch') : 'تنبيه: كلمتا المرور غير متطابقتين'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+              return;
+            }
+            widget.onNext();
+          },
+          child: Text(tr('continue_registration')),
+        ),
+      ],
     );
   }
 }
@@ -903,6 +979,7 @@ class EmergencyContactsScreen extends ConsumerStatefulWidget {
 
 class _EmergencyContactsScreenState extends ConsumerState<EmergencyContactsScreen> {
   late final List<EmergencyContact> _contacts;
+  bool _acceptedTerms = true;
 
   @override
   void initState() {
@@ -920,6 +997,24 @@ class _EmergencyContactsScreenState extends ConsumerState<EmergencyContactsScree
     widget.onContactsChanged(_contacts);
   }
 
+  void _addContact() {
+    if (_contacts.length < 3) {
+      setState(() {
+        _contacts.add(const EmergencyContact());
+      });
+      widget.onContactsChanged(_contacts);
+    }
+  }
+
+  void _removeContact(int index) {
+    if (_contacts.length > 1) {
+      setState(() {
+        _contacts.removeAt(index);
+      });
+      widget.onContactsChanged(_contacts);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final tr = ref.watch(translationProvider).tr;
@@ -928,17 +1023,33 @@ class _EmergencyContactsScreenState extends ConsumerState<EmergencyContactsScree
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: 48),
+          const SizedBox(height: 32),
           Text(tr('emergency_contacts_title'), style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Text(tr('emergency_contacts_desc'), style: const TextStyle(color: Colors.grey)),
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
           ...List.generate(_contacts.length, (index) {
             final contact = _contacts[index];
             return GlassContainer(
               margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '${tr('emergency_contacts_title')} #${index + 1}',
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFE91E63)),
+                      ),
+                      if (_contacts.length > 1)
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, color: Colors.red),
+                          onPressed: () => _removeContact(index),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
                   TextFormField(
                     initialValue: contact.name,
                     decoration: InputDecoration(labelText: tr('contact_name'), prefixIcon: const Icon(Icons.person_outline)),
@@ -962,8 +1073,60 @@ class _EmergencyContactsScreenState extends ConsumerState<EmergencyContactsScree
               ),
             );
           }),
-          const SizedBox(height: 16),
-          ElevatedButton(onPressed: widget.onNext, child: Text(tr('finish_registration_btn'))),
+          if (_contacts.length < 3)
+            OutlinedButton.icon(
+              onPressed: _addContact,
+              icon: const Icon(Icons.add),
+              label: Text(tr('add_contact_btn') != 'add_contact_btn' ? tr('add_contact_btn') : 'إضافة جهة اتصال أخرى'),
+            ),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Checkbox(
+                value: _acceptedTerms,
+                activeColor: const Color(0xFFE91E63),
+                onChanged: (val) => setState(() => _acceptedTerms = val ?? false),
+              ),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const TermsAcceptanceScreen()),
+                    );
+                  },
+                  child: Text.rich(
+                    TextSpan(
+                      text: tr('agree_terms_prefix') != 'agree_terms_prefix' ? tr('agree_terms_prefix') : 'أوافق على ',
+                      children: [
+                        TextSpan(
+                          text: tr('terms_and_conditions') != 'terms_and_conditions' ? tr('terms_and_conditions') : 'الشروط والأحكام وسياسة الخصوصية',
+                          style: const TextStyle(color: Color(0xFFE91E63), fontWeight: FontWeight.bold, decoration: TextDecoration.underline),
+                        ),
+                      ],
+                    ),
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: () {
+              if (!_acceptedTerms) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(tr('must_accept_terms') != 'must_accept_terms' ? tr('must_accept_terms') : 'يجب الموافقة على الشروط والأحكام للمتابعة'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                return;
+              }
+              widget.onNext();
+            },
+            child: Text(tr('finish_registration_btn')),
+          ),
         ],
       ),
     );
