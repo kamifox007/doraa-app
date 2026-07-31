@@ -38,6 +38,13 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Patch flutter_jailbreak_detection namespace
+        run: |
+          BUILD_GRADLE="/home/runner/.pub-cache/hosted/pub.dev/flutter_jailbreak_detection-1.10.0/android/build.gradle"
+          if [ -f "$BUILD_GRADLE" ]; then
+            sed -i 's/android {/android {\n    namespace "com.wz.flutter_jailbreak_detection"/' "$BUILD_GRADLE"
+          fi
+
       - name: Build Web
         if: ${{ github.event_name == 'push' || github.event.inputs.build_web == 'true' }}
         run: flutter build web
