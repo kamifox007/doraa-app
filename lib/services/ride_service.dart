@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
@@ -449,7 +448,7 @@ class RideService {
     return {'id': fallbackId, 'pin': pin};
   }
 
-  Future<String?> uploadVoiceNote(File audioFile, String rideId) async {
+  Future<String?> uploadVoiceNote(dynamic audioFile, String rideId) async {
     try {
       final fileName = 'voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
       final path = '$rideId/$fileName';

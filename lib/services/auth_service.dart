@@ -1,5 +1,5 @@
-import 'dart:io' as io;
 import 'package:flutter/foundation.dart';
+import '../core/utils/file_utils.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/auth_models.dart' as app_models;
 import 'package:flutter_image_compress/flutter_image_compress.dart';
@@ -131,8 +131,7 @@ class AuthService {
   }) async {
     _requireConfigured();
     try {
-      final file = io.File(filePath);
-      if (!file.existsSync()) return null;
+      if (!kIsWeb && !fileExists(filePath)) return null;
       
       final ext = filePath.split('.').last.toLowerCase();
       
@@ -144,8 +143,8 @@ class AuthService {
       }
 
       // 2. Validate file size (max 5MB)
-      final fileSize = await file.length();
-      if (fileSize > 5 * 1024 * 1024) {
+      final fileSize = kIsWeb ? 0 : await getFileLength(getPlatformFile(filePath));
+      if (!kIsWeb && fileSize > 5 * 1024 * 1024) {
         debugPrint('Error: File size exceeds 5MB limit');
         return null;
       }
@@ -153,10 +152,10 @@ class AuthService {
       final fileName = '${userId}_${type}_${DateTime.now().millisecondsSinceEpoch}.$ext';
       final storagePath = '$userId/$fileName';
       
-      final compressedFile = await _compressImage(file);
-      if (compressedFile == null) return null;
+      final compressedFile = kIsWeb ? null : await _compressImage(getPlatformFile(filePath));
+      if (!kIsWeb && compressedFile == null) return null;
       
-      await client.storage.from('identity_documents').upload(storagePath, compressedFile);
+      await client.storage.from('identity_documents').upload(storagePath, kIsWeb ? filePath : compressedFile);
       
       // 3. Security: Use createSignedUrl instead of getPublicUrl (valid for 10 years as a secure reference)
       // For ultimate security, the DB should store 'storagePath' and UI should request signed URLs on the fly.
@@ -168,8 +167,9 @@ class AuthService {
     }
   }
 
-  Future<io.File?> _compressImage(io.File file) async {
-    final filePath = file.absolute.path;
+  Future<dynamic> _compressImage(dynamic file) async {
+    if (kIsWeb) return file;
+    final filePath = getFilePath(file);
     final lastIndex = filePath.lastIndexOf(RegExp(r'.jp'));
     if (lastIndex == -1) return file; // Might not be compressable easily or already png
     
@@ -177,13 +177,13 @@ class AuthService {
     final outPath = "${splitted}_out${filePath.substring(lastIndex)}";
     
     var result = await FlutterImageCompress.compressAndGetFile(
-      file.absolute.path, 
+      filePath, 
       outPath,
       quality: 70,
     );
     
     if (result != null) {
-      return io.File(result.path);
+      return getPlatformFile(result.path);
     }
     return file; // Fallback to original
   }
@@ -194,18 +194,17 @@ class AuthService {
   }) async {
     _requireConfigured();
     try {
-      final file = io.File(filePath);
-      if (!file.existsSync()) return null;
+      if (!kIsWeb && !fileExists(filePath)) return null;
       
       final ext = filePath.split('.').last.toLowerCase();
       final fileName = '${userId}_avatar_${DateTime.now().millisecondsSinceEpoch}.$ext';
       final storagePath = 'avatars/$fileName';
       
-      final compressedFile = await _compressImage(file);
-      if (compressedFile == null) return null;
+      final compressedFile = kIsWeb ? null : await _compressImage(getPlatformFile(filePath));
+      if (!kIsWeb && compressedFile == null) return null;
 
       // Ensure the 'public_profiles' bucket exists and is public
-      await client.storage.from('public_profiles').upload(storagePath, compressedFile);
+      await client.storage.from('public_profiles').upload(storagePath, kIsWeb ? filePath : compressedFile);
       
       final publicUrl = client.storage.from('public_profiles').getPublicUrl(storagePath);
       

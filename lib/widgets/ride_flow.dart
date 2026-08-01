@@ -1,4 +1,5 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart';
+import '../core/utils/file_utils.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/translation_service.dart';
@@ -1962,7 +1963,7 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> {
                       final rideId = currentRideId ?? 'local';
                       String voiceContent;
                       final uploadedUrl = await _rideService.uploadVoiceNote(
-                        File(localPath), rideId);
+                        getPlatformFile(localPath), rideId);
                       if (uploadedUrl != null) {
                         voiceContent = '[صوت: $uploadedUrl]';
                         // إرسال الرسالة الصوتية إلى Supabase
@@ -2937,7 +2938,7 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> {
     if (_recordingPath == null || currentRideId == null) return;
     setState(() => isSendingVoice = true);
     try {
-      final file = File(_recordingPath!);
+      final file = getPlatformFile(_recordingPath!);
       final url = await _rideService.uploadVoiceNote(file, currentRideId!);
       if (url != null) {
         final senderId = ref.read(authProvider).userId ?? 'demo-user';
