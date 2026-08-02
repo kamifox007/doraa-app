@@ -94,10 +94,6 @@ class TranslationService {
       'en': 'Skip to Demo'
     },
 
-      'ar': 'توصيل آمن وموثوق.. من النساء وإلى النساء',
-      'fr': 'Transport sûr et fiable.. Par des femmes, pour des femmes',
-      'en': 'Safe and reliable transport.. By women, for women'
-    },
     'lets_go': {
       'ar': 'لننطلق',
       'fr': 'C\'est parti',

@@ -604,7 +604,7 @@ class _EmailPasswordScreenState extends ConsumerState<EmailPasswordScreen> {
     return Colors.green;
   }
 
-  String _getStrengthText(double strength, Map<String, dynamic> Function(String) tr) {
+  String _getStrengthText(double strength, String Function(String) tr) {
     if (strength <= 0.35) return tr('weak') != 'weak' ? tr('weak') : 'ضعيفة';
     if (strength <= 0.70) return tr('medium') != 'medium' ? tr('medium') : 'متوسطة';
     return tr('strong') != 'strong' ? tr('strong') : 'قوية';
