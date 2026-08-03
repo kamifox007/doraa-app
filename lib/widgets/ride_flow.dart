@@ -319,6 +319,7 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> {
   bool isRecording = false;
   bool isSendingVoice = false;
   bool isSharedRide = false;
+  int sharedSeatsCount = 2;
   bool isIntercity = false;
 
   StreamSubscription<List<RideMessage>>? _messagesSubscription;
@@ -1041,8 +1042,8 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> {
       durationMinutes: durationMinutes,
     );
     
-    // حساب السعر بناءً على نوع الرحلة (إذا كانت تشاركية ينقسم على 2)
-    final displayTotalFare = isSharedRide ? breakdown.totalFare / 2 : breakdown.totalFare;
+    // حساب السعر بناءً على نوع الرحلة (إذا كانت تشاركية ينقسم على عدد الأشخاص)
+    final displayTotalFare = isSharedRide ? breakdown.totalFare / sharedSeatsCount : breakdown.totalFare;
     final minFare = RideService.minFareForEstimate(displayTotalFare);
     final maxFare = RideService.maxFareForEstimate(displayTotalFare);
 
@@ -1119,7 +1120,7 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> {
                 child: GestureDetector(
                   onTap: () => setState(() {
                     isSharedRide = true;
-                    proposedFare = breakdown.totalFare / 2;
+                    proposedFare = breakdown.totalFare / sharedSeatsCount;
                     customFare = proposedFare;
                   }),
                   child: AnimatedContainer(
@@ -1149,9 +1150,52 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> {
               ),
             ],
           ),
-          if (isSharedRide)
+          if (isSharedRide) ...[
             Padding(
               padding: const EdgeInsets.only(top: 16, bottom: 4),
+              child: Row(
+                children: [
+                  const Text('تقسيم الرحلة على:', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF9C27B0))),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: SegmentedButton<int>(
+                      segments: const [
+                        ButtonSegment(value: 2, label: Text('شخصين (÷2)')),
+                        ButtonSegment(value: 3, label: Text('3 أشخاص (÷3)')),
+                      ],
+                      selected: {sharedSeatsCount},
+                      onSelectionChanged: (Set<int> newSelection) {
+                        setState(() {
+                          sharedSeatsCount = newSelection.first;
+                          proposedFare = breakdown.totalFare / sharedSeatsCount;
+                          customFare = proposedFare;
+                        });
+                      },
+                      style: ButtonStyle(
+                        backgroundColor: WidgetStateProperty.resolveWith<Color>(
+                          (Set<WidgetState> states) {
+                            if (states.contains(WidgetState.selected)) {
+                              return const Color(0xFF9C27B0);
+                            }
+                            return Colors.white;
+                          },
+                        ),
+                        foregroundColor: WidgetStateProperty.resolveWith<Color>(
+                          (Set<WidgetState> states) {
+                            if (states.contains(WidgetState.selected)) {
+                              return Colors.white;
+                            }
+                            return const Color(0xFF9C27B0);
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 8, bottom: 4),
               child: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -1165,7 +1209,7 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'تم تحديد سعر المقعد بشكل ثابت وبدون تفاوض!',
+                        'تم تحديد سعر المقعد بشكل ثابت لـ $sharedSeatsCount أشخاص!',
                         style: TextStyle(color: Colors.purple.shade700, fontSize: 13, fontWeight: FontWeight.bold),
                       ),
                     ),
@@ -1173,6 +1217,7 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> {
                 ),
               ),
             ),
+          ],
           const SizedBox(height: 16),
           // بطاقة تفاصيل الأجرة
           Container(
@@ -1203,7 +1248,7 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> {
                   highlight: isSharedRide
                 ),
                 const SizedBox(height: 4),
-                _fareRow(tr('dora_commission'), '- ${(isSharedRide ? breakdown.commission / 2 : breakdown.commission).toInt()} دج', dimmed: true),
+                _fareRow(tr('dora_commission'), '- ${(isSharedRide ? breakdown.commission / sharedSeatsCount : breakdown.commission).toInt()} دج', dimmed: true),
                 _fareRow(tr('driver_net'), '${breakdown.driverNet.toInt()} دج', green: true),
               ],
             ),
@@ -1459,17 +1504,16 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> {
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        if (!request.isShared)
-                          TextButton(
-                            onPressed: () {
-                              setState(() {
-                                selectedRequest = request;
-                                selectedDriverName = 'أنت';
-                                _step = RideFlowStep.negotiation;
-                              });
-                            },
-                            child: Text(tr('negotiate_btn'), style: const TextStyle(color: Color(0xFFE91E63), fontWeight: FontWeight.bold)),
-                          ),
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              selectedRequest = request;
+                              selectedDriverName = 'أنت';
+                              _step = RideFlowStep.negotiation;
+                            });
+                          },
+                          child: Text(tr('negotiate_btn'), style: const TextStyle(color: Color(0xFFE91E63), fontWeight: FontWeight.bold)),
+                        ),
                         ElevatedButton(
                           onPressed: () {
                             setState(() {
