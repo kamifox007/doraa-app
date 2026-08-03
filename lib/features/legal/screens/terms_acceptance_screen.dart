@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../widgets/ride_flow.dart';
 import '../../../widgets/auth_flow.dart';
 import '../../../services/translation_service.dart';
+import '../../../services/app_config.dart';
 
 class TermsAcceptanceScreen extends ConsumerStatefulWidget {
   const TermsAcceptanceScreen({super.key});
@@ -120,16 +121,18 @@ class _TermsAcceptanceScreenState extends ConsumerState<TermsAcceptanceScreen> {
 
   Future<void> _acceptTerms() async {
     try {
-      final user = Supabase.instance.client.auth.currentUser;
-      if (user != null) {
-        await Supabase.instance.client
-            .from('profiles')
-            .update({
-              'terms_accepted': true,
-              'terms_accepted_at': DateTime.now().toIso8601String(),
-              'terms_version': '1.0',
-            })
-            .eq('id', user.id);
+      if (AppConfig.isSupabaseConfigured) {
+        final user = Supabase.instance.client.auth.currentUser;
+        if (user != null) {
+          await Supabase.instance.client
+              .from('profiles')
+              .update({
+                'terms_accepted': true,
+                'terms_accepted_at': DateTime.now().toIso8601String(),
+                'terms_version': '1.0',
+              })
+              .eq('id', user.id);
+        }
       }
       if (mounted) {
         Navigator.pushReplacement(
@@ -138,6 +141,7 @@ class _TermsAcceptanceScreenState extends ConsumerState<TermsAcceptanceScreen> {
         );
       }
     } catch (e) {
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('حدث خطأ: $e')),

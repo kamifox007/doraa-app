@@ -1308,6 +1308,16 @@ class PendingApprovalScreen extends ConsumerWidget {
             textAlign: TextAlign.center,
             style: const TextStyle(height: 1.5, color: Colors.grey),
           ),
+          if (!AppConfig.isSupabaseConfigured) ...[
+            const SizedBox(height: 32),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const RideFlowScreen()));
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12)),
+              child: const Text('دخول لتجربة التطبيق (وضع تجريبي)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
         ],
       ),
     );
