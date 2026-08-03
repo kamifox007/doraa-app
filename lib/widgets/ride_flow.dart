@@ -53,8 +53,6 @@ class _AnimatedWaitingRiderState extends State<AnimatedWaitingRider> with Single
     _shakeAnimation = Tween<double>(begin: -0.05, end: 0.05).animate(
       CurvedAnimation(parent: _controller, curve: Curves.elasticIn),
     );
-    // لإيقاف الأنيميشن المستمر لتخفيف العبء على متصفح الهاتف
-    _controller.stop();
   }
 
   @override
@@ -188,16 +186,12 @@ class FreeMapPreview extends StatelessWidget {
             onCenterChanged?.call(position.center);
           }
         },
-        interactionOptions: const InteractionOptions(
-          flags: InteractiveFlag.all & ~InteractiveFlag.rotate, // تعطيل التدوير لتحسين الأداء
-        ),
       ),
       children: [
         TileLayer(
           urlTemplate: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
           subdomains: const ['a', 'b', 'c', 'd'],
           userAgentPackageName: 'com.example.doraa',
-          retinaMode: false, // تعطيل صور الريتينا الثقيلة لتخفيف استهلاك الهاتف
         ),
         if (routePolyline != null && routePolyline!.isNotEmpty)
           PolylineLayer(
