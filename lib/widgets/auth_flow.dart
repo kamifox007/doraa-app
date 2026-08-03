@@ -1312,7 +1312,7 @@ class PendingApprovalScreen extends ConsumerWidget {
             const SizedBox(height: 32),
             ElevatedButton(
               onPressed: () {
-                Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const RideFlowScreen()));
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const TermsAcceptanceScreen()));
               },
               style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12)),
               child: const Text('دخول لتجربة التطبيق (وضع تجريبي)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
