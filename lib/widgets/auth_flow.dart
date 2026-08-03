@@ -161,15 +161,17 @@ class _AuthFlowScreenState extends ConsumerState<AuthFlowScreen> {
                       onWilayaChanged: (value) => ref.read(registrationProvider.notifier).updateWilaya(value),
                       onRoleChanged: (value) => ref.read(registrationProvider.notifier).updateRole(value),
                       onNext: () {
-                        if (!ValidationService.isValidName(registration.fullName)) {
-                          final tr = ref.read(translationProvider).tr;
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('invalid_name'))));
-                          return;
-                        }
-                        if (!ValidationService.isValidWilaya(registration.wilaya)) {
-                          final tr = ref.read(translationProvider).tr;
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('select_wilaya'))));
-                          return;
+                        if (AppConfig.isSupabaseConfigured) {
+                          if (!ValidationService.isValidName(registration.fullName)) {
+                            final tr = ref.read(translationProvider).tr;
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('invalid_name'))));
+                            return;
+                          }
+                          if (!ValidationService.isValidWilaya(registration.wilaya)) {
+                            final tr = ref.read(translationProvider).tr;
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('select_wilaya'))));
+                            return;
+                          }
                         }
                         _goToPage(registration.role == 'driver' ? 5 : 7); // 5 for driver, 7 for Emergency Contacts
                       },
@@ -199,9 +201,11 @@ class _AuthFlowScreenState extends ConsumerState<AuthFlowScreen> {
                       onNext: () async {
                         final messenger = ScaffoldMessenger.of(context);
                         final navigator = Navigator.of(context);
-                        if (!ValidationService.hasValidEmergencyContact(registration.emergencyContacts)) {
-                          messenger.showSnackBar(const SnackBar(content: Text('أضف جهة طوارئ واحدة على الأقل')));
-                          return;
+                        if (AppConfig.isSupabaseConfigured) {
+                          if (!ValidationService.hasValidEmergencyContact(registration.emergencyContacts)) {
+                            messenger.showSnackBar(const SnackBar(content: Text('أضف جهة طوارئ واحدة على الأقل')));
+                            return;
+                          }
                         }
                         
                         if (AppConfig.isSupabaseConfigured) {
