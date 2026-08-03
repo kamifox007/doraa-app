@@ -119,6 +119,7 @@ class _AuthFlowScreenState extends ConsumerState<AuthFlowScreen> {
                           _goToPage(3);
                         }
                       },
+                      onBack: () => _goToPage(1),
                     ),
                     EmailPasswordScreen(
                       email: registration.email,
@@ -150,6 +151,7 @@ class _AuthFlowScreenState extends ConsumerState<AuthFlowScreen> {
                           _goToPage(4);
                         }
                       },
+                      onBack: () => _goToPage(2),
                     ),
                     PersonalInfoScreen(
                       fullName: registration.fullName,
@@ -171,6 +173,7 @@ class _AuthFlowScreenState extends ConsumerState<AuthFlowScreen> {
                         }
                         _goToPage(registration.role == 'driver' ? 5 : 7); // 5 for driver, 7 for Emergency Contacts
                       },
+                      onBack: () => _goToPage(3),
                     ),
                     DriverVehicleScreen(
                       brand: registration.carBrand,
@@ -184,9 +187,11 @@ class _AuthFlowScreenState extends ConsumerState<AuthFlowScreen> {
                       onColorChanged: (value) => ref.read(registrationProvider.notifier).updateCarColor(value),
                       onPlateChanged: (value) => ref.read(registrationProvider.notifier).updateCarPlate(value),
                       onNext: () => _goToPage(6),
+                      onBack: () => _goToPage(4),
                     ),
                     DocumentsScreen(
                       onNext: () => _goToPage(7),
+                      onBack: () => _goToPage(5),
                     ),
                     EmergencyContactsScreen(
                       contacts: registration.emergencyContacts,
@@ -215,6 +220,7 @@ class _AuthFlowScreenState extends ConsumerState<AuthFlowScreen> {
                           navigator.pushReplacement(MaterialPageRoute(builder: (_) => const TermsAcceptanceScreen()));
                         }
                       },
+                      onBack: () => _goToPage(registration.role == 'driver' ? 6 : 4),
                     ),
                     LoginScreen(
                       email: registration.email,
@@ -517,6 +523,7 @@ class PhoneOtpScreen extends ConsumerWidget {
     required this.onOtpChanged,
     required this.onSubmit,
     required this.onVerify,
+    required this.onBack,
   });
 
   final String phone;
@@ -524,6 +531,7 @@ class PhoneOtpScreen extends ConsumerWidget {
   final ValueChanged<String> onOtpChanged;
   final VoidCallback onSubmit;
   final VoidCallback onVerify;
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -531,6 +539,11 @@ class PhoneOtpScreen extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
+          Row(
+            children: [
+              IconButton(onPressed: onBack, icon: const Icon(Icons.arrow_back)),
+            ],
+          ),
           const Icon(Icons.phone_android_rounded, size: 80, color: Colors.grey),
           const SizedBox(height: 32),
           Text(tr('confirm_phone_title'), style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold), textAlign: TextAlign.center),
@@ -585,6 +598,7 @@ class EmailPasswordScreen extends ConsumerStatefulWidget {
     required this.onPasswordChanged,
     required this.onConfirmPasswordChanged,
     required this.onNext,
+    required this.onBack,
   });
 
   final String email;
@@ -594,6 +608,7 @@ class EmailPasswordScreen extends ConsumerStatefulWidget {
   final ValueChanged<String> onPasswordChanged;
   final ValueChanged<String> onConfirmPasswordChanged;
   final VoidCallback onNext;
+  final VoidCallback onBack;
 
   @override
   ConsumerState<EmailPasswordScreen> createState() => _EmailPasswordScreenState();
@@ -633,6 +648,11 @@ class _EmailPasswordScreenState extends ConsumerState<EmailPasswordScreen> {
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
+        Row(
+          children: [
+            IconButton(onPressed: widget.onBack, icon: const Icon(Icons.arrow_back)),
+          ],
+        ),
         const Icon(Icons.lock_person_rounded, size: 80, color: Color(0xFFE91E63)),
         const SizedBox(height: 32),
         Text(tr('setup_password_title'), style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold), textAlign: TextAlign.center),
@@ -745,6 +765,7 @@ class PersonalInfoScreen extends ConsumerWidget {
     required this.onWilayaChanged,
     required this.onRoleChanged,
     required this.onNext,
+    required this.onBack,
   });
 
   final String fullName;
@@ -754,6 +775,7 @@ class PersonalInfoScreen extends ConsumerWidget {
   final ValueChanged<String> onWilayaChanged;
   final ValueChanged<String> onRoleChanged;
   final VoidCallback onNext;
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -762,6 +784,11 @@ class PersonalInfoScreen extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
+          Row(
+            children: [
+              IconButton(onPressed: onBack, icon: const Icon(Icons.arrow_back)),
+            ],
+          ),
           const SizedBox(height: 48),
           Text(tr('personal_info_title'), style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
@@ -846,6 +873,7 @@ class DriverVehicleScreen extends ConsumerWidget {
     required this.onColorChanged,
     required this.onPlateChanged,
     required this.onNext,
+    required this.onBack,
   });
 
   final String brand;
@@ -859,6 +887,7 @@ class DriverVehicleScreen extends ConsumerWidget {
   final ValueChanged<String> onColorChanged;
   final ValueChanged<String> onPlateChanged;
   final VoidCallback onNext;
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -868,7 +897,12 @@ class DriverVehicleScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: 48),
+          Row(
+            children: [
+              IconButton(onPressed: onBack, icon: const Icon(Icons.arrow_back)),
+            ],
+          ),
+          const SizedBox(height: 16),
           Text(tr('vehicle_data_title'), style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Text(tr('vehicle_data_desc'), style: const TextStyle(color: Colors.grey)),
@@ -932,8 +966,9 @@ class DriverVehicleScreen extends ConsumerWidget {
 }
 
 class DocumentsScreen extends ConsumerWidget {
-  const DocumentsScreen({super.key, required this.onNext});
+  const DocumentsScreen({super.key, required this.onNext, required this.onBack});
   final VoidCallback onNext;
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -943,6 +978,11 @@ class DocumentsScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Row(
+            children: [
+              IconButton(onPressed: onBack, icon: const Icon(Icons.arrow_back)),
+            ],
+          ),
           const Icon(Icons.document_scanner_rounded, size: 80, color: Colors.grey),
           const SizedBox(height: 32),
           Text(tr('verify_identity_title'), style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold), textAlign: TextAlign.center),
@@ -982,10 +1022,11 @@ class DocumentsScreen extends ConsumerWidget {
 }
 
 class EmergencyContactsScreen extends ConsumerStatefulWidget {
-  const EmergencyContactsScreen({super.key, required this.contacts, required this.onContactsChanged, required this.onNext});
+  const EmergencyContactsScreen({super.key, required this.contacts, required this.onContactsChanged, required this.onNext, required this.onBack});
   final List<EmergencyContact> contacts;
   final ValueChanged<List<EmergencyContact>> onContactsChanged;
   final VoidCallback onNext;
+  final VoidCallback onBack;
 
   @override
   ConsumerState<EmergencyContactsScreen> createState() => _EmergencyContactsScreenState();
@@ -1037,7 +1078,12 @@ class _EmergencyContactsScreenState extends ConsumerState<EmergencyContactsScree
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: 32),
+          Row(
+            children: [
+              IconButton(onPressed: widget.onBack, icon: const Icon(Icons.arrow_back)),
+            ],
+          ),
+          const SizedBox(height: 16),
           Text(tr('emergency_contacts_title'), style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Text(tr('emergency_contacts_desc'), style: const TextStyle(color: Colors.grey)),
@@ -1170,11 +1216,12 @@ class LoginScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tr = ref.watch(translationProvider).tr;
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
@@ -1227,6 +1274,7 @@ class LoginScreen extends ConsumerWidget {
             ),
           ],
         ],
+      ),
       ),
     );
   }

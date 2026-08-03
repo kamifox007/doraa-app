@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../widgets/ride_flow.dart';
+import '../../../widgets/auth_flow.dart';
 import '../../../services/translation_service.dart';
 
 class TermsAcceptanceScreen extends ConsumerStatefulWidget {
@@ -80,7 +81,9 @@ class _TermsAcceptanceScreenState extends ConsumerState<TermsAcceptanceScreen> {
               ),
             ),
             TextButton(
-              onPressed: () => SystemNavigator.pop(),
+              onPressed: () {
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const AuthFlowScreen()));
+              },
               child: Text(tr('terms_reject_btn'), style: const TextStyle(color: Colors.red)),
             ),
           ],
