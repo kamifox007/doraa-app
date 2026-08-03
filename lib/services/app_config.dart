@@ -27,12 +27,7 @@ class AppConfig {
   );
 
   static bool get isSupabaseConfigured {
-    final key = effectiveSupabaseKey;
-    return supabaseUrl.startsWith('https://') &&
-        supabaseUrl.contains('supabase.co') &&
-        key.isNotEmpty &&
-        !key.contains('dummy') &&
-        !key.contains('your');
+    return false; // Force Demo Mode as requested
   }
 
   static bool get isStitchConfigured {
