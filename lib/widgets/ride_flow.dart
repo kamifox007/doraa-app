@@ -37,6 +37,8 @@ class _AnimatedWaitingRiderState extends State<AnimatedWaitingRider> with Single
   late AnimationController _controller;
   late Animation<double> _bounceAnimation;
   late Animation<double> _shakeAnimation;
+  bool _isAngry = false;
+  Timer? _angryTimer;
 
   @override
   void initState() {
@@ -53,10 +55,29 @@ class _AnimatedWaitingRiderState extends State<AnimatedWaitingRider> with Single
     _shakeAnimation = Tween<double>(begin: -0.05, end: 0.05).animate(
       CurvedAnimation(parent: _controller, curve: Curves.elasticIn),
     );
+
+    // التحول إلى غاضبة بعد 15 ثانية من الانتظار
+    _angryTimer = Timer(const Duration(seconds: 15), () {
+      if (mounted) {
+        setState(() {
+          _isAngry = true;
+          // تسريع الحركة للتعبير عن الغضب ونفاد الصبر
+          _controller.duration = const Duration(milliseconds: 600);
+          _bounceAnimation = Tween<double>(begin: 0, end: -15).animate(
+            CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+          );
+          _shakeAnimation = Tween<double>(begin: -0.1, end: 0.1).animate(
+            CurvedAnimation(parent: _controller, curve: Curves.elasticIn),
+          );
+          _controller.repeat(reverse: true);
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
+    _angryTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -72,19 +93,21 @@ class _AnimatedWaitingRiderState extends State<AnimatedWaitingRider> with Single
             child: Transform.rotate(
               angle: _shakeAnimation.value,
               child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.9),
+                  borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.pink.withValues(alpha: 0.3),
-                      blurRadius: 10,
-                      spreadRadius: 2,
+                      color: _isAngry ? Colors.red.withValues(alpha: 0.5) : Colors.pink.withValues(alpha: 0.3),
+                      blurRadius: _isAngry ? 15 : 10,
+                      spreadRadius: _isAngry ? 4 : 2,
                     ),
                   ],
                 ),
-                child: const Text(
-                  '🙎‍♀️', // Woman pouting/nervous emoji
-                  style: TextStyle(fontSize: 40),
+                child: Text(
+                  _isAngry ? '😤👜' : '🚶‍♀️👜', // فتاة غاضبة مقابل فتاة عادية بحقيبة
+                  style: const TextStyle(fontSize: 32),
                 ),
               ),
             ),
