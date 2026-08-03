@@ -1080,72 +1080,97 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> {
           ),
           const SizedBox(height: 16),
           // اختيار نوع الرحلة (تشاركية أم فردية)
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade200,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() {
-                      isSharedRide = false;
-                      proposedFare = breakdown.totalFare;
-                      customFare = proposedFare;
-                    }),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: !isSharedRide ? Colors.white : Colors.transparent,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: !isSharedRide ? [const BoxShadow(color: Colors.black12, blurRadius: 4)] : null,
-                      ),
-                      child: Column(
-                        children: [
-                          Icon(Icons.person, color: !isSharedRide ? const Color(0xFFE91E63) : Colors.grey),
-                          const SizedBox(height: 4),
-                          Text(tr('solo_ride'), style: TextStyle(fontWeight: FontWeight.bold, color: !isSharedRide ? const Color(0xFFE91E63) : Colors.grey)),
-                        ],
-                      ),
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() {
+                    isSharedRide = false;
+                    proposedFare = breakdown.totalFare;
+                    customFare = proposedFare;
+                  }),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+                    decoration: BoxDecoration(
+                      gradient: !isSharedRide 
+                          ? const LinearGradient(colors: [Color(0xFFE91E63), Color(0xFFFF5F9E)])
+                          : const LinearGradient(colors: [Colors.white, Colors.white]),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: !isSharedRide ? Colors.transparent : Colors.grey.shade300, width: 2),
+                      boxShadow: !isSharedRide 
+                          ? [BoxShadow(color: const Color(0xFFE91E63).withValues(alpha: 0.4), blurRadius: 12, offset: const Offset(0, 4))]
+                          : [],
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(Icons.person, color: !isSharedRide ? Colors.white : Colors.grey.shade600, size: 32),
+                        const SizedBox(height: 8),
+                        Text(tr('solo_ride'), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: !isSharedRide ? Colors.white : Colors.grey.shade700)),
+                        const SizedBox(height: 4),
+                        Text('سيارة لكِ وحدك', style: TextStyle(fontSize: 11, color: !isSharedRide ? Colors.white70 : Colors.grey)),
+                      ],
                     ),
                   ),
                 ),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() {
-                      isSharedRide = true;
-                      proposedFare = breakdown.totalFare / 2;
-                      customFare = proposedFare;
-                    }),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: isSharedRide ? const Color(0xFFE91E63) : Colors.transparent,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: isSharedRide ? [BoxShadow(color: const Color(0xFFE91E63).withValues(alpha: 0.3), blurRadius: 8)] : null,
-                      ),
-                      child: Column(
-                        children: [
-                          Icon(Icons.people, color: isSharedRide ? Colors.white : Colors.grey),
-                          const SizedBox(height: 4),
-                          Text(tr('shared_ride'), style: TextStyle(fontWeight: FontWeight.bold, color: isSharedRide ? Colors.white : Colors.grey)),
-                        ],
-                      ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() {
+                    isSharedRide = true;
+                    proposedFare = breakdown.totalFare / 2;
+                    customFare = proposedFare;
+                  }),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+                    decoration: BoxDecoration(
+                      gradient: isSharedRide 
+                          ? const LinearGradient(colors: [Color(0xFF9C27B0), Color(0xFFE040FB)])
+                          : const LinearGradient(colors: [Colors.white, Colors.white]),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: isSharedRide ? Colors.transparent : Colors.grey.shade300, width: 2),
+                      boxShadow: isSharedRide 
+                          ? [BoxShadow(color: const Color(0xFF9C27B0).withValues(alpha: 0.4), blurRadius: 12, offset: const Offset(0, 4))]
+                          : [],
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(Icons.people, color: isSharedRide ? Colors.white : Colors.grey.shade600, size: 32),
+                        const SizedBox(height: 8),
+                        Text(tr('shared_ride'), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isSharedRide ? Colors.white : Colors.grey.shade700)),
+                        const SizedBox(height: 4),
+                        Text('تشاركية بسعر ثابت', style: TextStyle(fontSize: 11, color: isSharedRide ? Colors.white70 : Colors.grey)),
+                      ],
                     ),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
           if (isSharedRide)
             Padding(
-              padding: const EdgeInsets.only(top: 8, bottom: 4),
-              child: Text(
-                tr('shared_ride_desc'),
-                style: TextStyle(color: Colors.pink.shade700, fontSize: 12, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
+              padding: const EdgeInsets.only(top: 16, bottom: 4),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF9C27B0).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF9C27B0).withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline, color: Color(0xFF9C27B0)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'تم تحديد سعر المقعد بشكل ثابت وبدون تفاوض!',
+                        style: TextStyle(color: Colors.purple.shade700, fontSize: 13, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           const SizedBox(height: 16),
@@ -1223,10 +1248,16 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: isSubmitting ? null : _submitRideRequest,
-              style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isSharedRide ? const Color(0xFF9C27B0) : null,
+                padding: const EdgeInsets.symmetric(vertical: 16)
+              ),
               child: isSubmitting
                   ? const CircularProgressIndicator(color: Colors.white)
-                  : Text('${tr('send_request_btn')} - ${proposedFare.toInt()} دج', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  : Text(isSharedRide 
+                      ? 'تأكيد حجز مقعد تشاركي - ${proposedFare.toInt()} دج'
+                      : '${tr('send_request_btn')} - ${proposedFare.toInt()} دج', 
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
             ),
           ),
 
@@ -2539,12 +2570,27 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> {
 
   Widget _buildMapPreview({bool showPickupMarker = false, LatLng? driverLocation}) {
     final location = driverLocation ?? pickupLocation ?? const LatLng(36.7538, 3.0588);
+    
+    // محاكاة نقطة توقف إضافية (راكبة أخرى) للرحلات التشاركية
+    LatLng? sharedStop;
+    List<LatLng>? displayPolyline = _routePolyline;
+    
+    if (isSharedRide && pickupLocation != null && dropoffLocation != null) {
+      sharedStop = LatLng(
+        (pickupLocation!.latitude + dropoffLocation!.latitude) / 2 + 0.005,
+        (pickupLocation!.longitude + dropoffLocation!.longitude) / 2 - 0.005,
+      );
+      // إنشاء مسار منكسر (مثلث) يمر بالراكبة الثانية
+      displayPolyline = [pickupLocation!, sharedStop, dropoffLocation!];
+    }
+
     return FreeMapPreview(
       center: location,
       showPickupMarker: showPickupMarker,
       pickupLocation: pickupLocation,
       dropoffLocation: dropoffLocation,
-      routePolyline: _routePolyline,
+      routePolyline: displayPolyline,
+      waitingRiderLocations: sharedStop != null ? [sharedStop] : const [],
       onCenterChanged: showPickupMarker
           ? (value) => setState(() {
               pickupLocation = value;
