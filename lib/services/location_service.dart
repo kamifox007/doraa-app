@@ -31,8 +31,8 @@ class LocationTrackingService {
 
     _subscription = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 10,
+        accuracy: LocationAccuracy.bestForNavigation, // أقصى دقة ممكنة
+        distanceFilter: 1, // التحديث عند التحرك متر واحد فقط
       ),
     ).listen((position) async {
       await RideService().insertLocationUpdate(
