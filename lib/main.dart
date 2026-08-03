@@ -127,7 +127,7 @@ class MyApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final localeString = ref.watch(localeProvider);
-    final isRtl = ref.watch(localeProvider.notifier).isRtl;
+    final isRtl = localeString == 'ar';
 
     return MaterialApp(
       title: 'Doraa App',
