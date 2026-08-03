@@ -485,6 +485,20 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     ),
                   ),
                 ),
+                if (!AppConfig.isSupabaseConfigured) ...[
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const TermsAcceptanceScreen()));
+                      },
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+                      child: const Text('تخطي - وضع تجريبي', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                    ),
+                  ),
+                ],
               ],
               const SizedBox(height: 16),
             ],
@@ -1202,6 +1216,16 @@ class LoginScreen extends ConsumerWidget {
             style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
             child: Text(tr('enter_btn'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           ),
+          if (!AppConfig.isSupabaseConfigured) ...[
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const TermsAcceptanceScreen()));
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, padding: const EdgeInsets.symmetric(vertical: 16)),
+              child: const Text('تخطي - وضع تجريبي', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+            ),
+          ],
         ],
       ),
     );
