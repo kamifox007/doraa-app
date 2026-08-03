@@ -12,7 +12,7 @@ import '../widgets/support_screen.dart';
 import '../widgets/privacy_policy_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+
 import '../widgets/driver_registration_screen.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -168,7 +168,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               radius: 50,
                               backgroundColor: Colors.white,
                               backgroundImage: _avatarUrl != null 
-                                  ? CachedNetworkImageProvider(_avatarUrl!) 
+                                  ? NetworkImage(_avatarUrl!) 
                                   : null,
                               child: _avatarUrl == null
                                   ? const Icon(Icons.person_rounded, size: 60, color: Color(0xFFE91E63))
