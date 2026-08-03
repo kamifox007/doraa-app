@@ -29,18 +29,27 @@ class LocationTrackingService {
       return;
     }
 
+    DateTime? _lastDbUpdateTime;
+
     _subscription = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.bestForNavigation, // أقصى دقة ممكنة
-        distanceFilter: 1, // التحديث عند التحرك متر واحد فقط
+        distanceFilter: 1, // التحديث على الشاشة عند التحرك متر واحد فقط
       ),
     ).listen((position) async {
-      await RideService().insertLocationUpdate(
-        rideId: rideId,
-        latitude: position.latitude,
-        longitude: position.longitude,
-      );
+      // 1. تحديث الخريطة فوراً كل متر واحد للمستخدم
       onLocationUpdate(position);
+
+      // 2. إرسال البيانات لقاعدة البيانات كل 5 ثوانٍ فقط لتجنب الضغط واستهلاك الإنترنت
+      final now = DateTime.now();
+      if (_lastDbUpdateTime == null || now.difference(_lastDbUpdateTime!).inSeconds >= 5) {
+        _lastDbUpdateTime = now;
+        await RideService().insertLocationUpdate(
+          rideId: rideId,
+          latitude: position.latitude,
+          longitude: position.longitude,
+        );
+      }
     });
   }
 
