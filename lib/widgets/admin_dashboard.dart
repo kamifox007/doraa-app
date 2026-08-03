@@ -642,7 +642,13 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
       SizedBox(
         height: 220,
         child: FlutterMap(
-          options: const MapOptions(initialCenter: LatLng(36.7525, 3.042), initialZoom: 6),
+          options: const MapOptions(
+            initialCenter: LatLng(36.7525, 3.042),
+            initialZoom: 6,
+            interactionOptions: InteractionOptions(
+              flags: InteractiveFlag.all & ~InteractiveFlag.rotate, // منع تدوير الخريطة لتخفيف الاستهلاك
+            ),
+          ),
           children: [
             TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'),
             MarkerLayer(markers: _activeRides.where((r) => r['pickup_lat'] != null).map((r) {

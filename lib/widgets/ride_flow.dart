@@ -63,32 +63,34 @@ class _AnimatedWaitingRiderState extends State<AnimatedWaitingRider> with Single
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return Transform.translate(
-          offset: Offset(0, _bounceAnimation.value),
-          child: Transform.rotate(
-            angle: _shakeAnimation.value,
-            child: Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.pink.withValues(alpha: 0.3),
-                    blurRadius: 10,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-              child: const Text(
-                '🙎‍♀️', // Woman pouting/nervous emoji
-                style: TextStyle(fontSize: 40),
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          return Transform.translate(
+            offset: Offset(0, _bounceAnimation.value),
+            child: Transform.rotate(
+              angle: _shakeAnimation.value,
+              child: Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.pink.withValues(alpha: 0.3),
+                      blurRadius: 10,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: const Text(
+                  '🙎‍♀️', // Woman pouting/nervous emoji
+                  style: TextStyle(fontSize: 40),
+                ),
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }
@@ -165,13 +167,15 @@ class FreeMapPreview extends StatelessWidget {
           point: driverLocation!,
           width: 50,
           height: 50,
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: [BoxShadow(color: Colors.pink.withValues(alpha: 0.5), blurRadius: 8)],
+          child: RepaintBoundary(
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [BoxShadow(color: Colors.pink.withValues(alpha: 0.5), blurRadius: 8)],
+              ),
+              child: const Icon(Icons.directions_car_rounded, color: Colors.pink, size: 30),
             ),
-            child: const Icon(Icons.directions_car_rounded, color: Colors.pink, size: 30),
           ),
         ),
       );
@@ -186,6 +190,9 @@ class FreeMapPreview extends StatelessWidget {
             onCenterChanged?.call(position.center);
           }
         },
+        interactionOptions: const InteractionOptions(
+          flags: InteractiveFlag.all & ~InteractiveFlag.rotate, // منع تدوير الخريطة لتخفيف الاستهلاك
+        ),
       ),
       children: [
         TileLayer(
