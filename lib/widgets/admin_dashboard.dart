@@ -240,14 +240,16 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('شحن رصيد: $driverName'),
-        content: TextField(
-          controller: amountCtrl,
-          decoration: const InputDecoration(
-            labelText: 'المبلغ (دج)',
-            hintText: 'مثال: 2000',
-            border: OutlineInputBorder(),
+        content: SingleChildScrollView(
+          child: TextField(
+            controller: amountCtrl,
+            decoration: const InputDecoration(
+              labelText: 'المبلغ (دج)',
+              hintText: 'مثال: 2000',
+              border: OutlineInputBorder(),
+            ),
+            keyboardType: TextInputType.number,
           ),
-          keyboardType: TextInputType.number,
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
@@ -298,12 +300,14 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('${tr('edit_fares_title')} ${fare['wilaya']}'),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: baseFareCtrl, decoration: InputDecoration(labelText: tr('base_fare_input')), keyboardType: TextInputType.number),
-          TextField(controller: perKmCtrl, decoration: InputDecoration(labelText: tr('per_km_input')), keyboardType: TextInputType.number),
-          TextField(controller: perMinCtrl, decoration: InputDecoration(labelText: tr('per_min_input')), keyboardType: TextInputType.number),
-          TextField(controller: minFareCtrl, decoration: InputDecoration(labelText: tr('min_fare_input')), keyboardType: TextInputType.number),
-        ]),
+        content: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextField(controller: baseFareCtrl, decoration: InputDecoration(labelText: tr('base_fare_input')), keyboardType: TextInputType.number),
+            TextField(controller: perKmCtrl, decoration: InputDecoration(labelText: tr('per_km_input')), keyboardType: TextInputType.number),
+            TextField(controller: perMinCtrl, decoration: InputDecoration(labelText: tr('per_min_input')), keyboardType: TextInputType.number),
+            TextField(controller: minFareCtrl, decoration: InputDecoration(labelText: tr('min_fare_input')), keyboardType: TextInputType.number),
+          ]),
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr('cancel_btn'))),
           ElevatedButton(
@@ -422,20 +426,19 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
               Text('📞 ${d['phone'] ?? ''}', style: const TextStyle(color: Colors.grey)),
               Text('📍 ${d['wilaya'] ?? ''}', style: const TextStyle(color: Colors.grey)),
               const SizedBox(height: 12),
-              Row(children: [
-                Expanded(child: OutlinedButton.icon(
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                OutlinedButton.icon(
                   onPressed: () => _updateDriverVerification(d['user_id'], 'approved'),
                   icon: const Icon(Icons.check, color: Colors.green),
                   label: Text(tr('accept_btn'), style: const TextStyle(color: Colors.green)),
                   style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.green)),
-                )),
-                const SizedBox(width: 8),
-                Expanded(child: OutlinedButton.icon(
+                ),
+                OutlinedButton.icon(
                   onPressed: () => _updateDriverVerification(d['user_id'], 'rejected'),
                   icon: const Icon(Icons.close, color: Colors.red),
                   label: Text(tr('reject_btn'), style: const TextStyle(color: Colors.red)),
                   style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.red)),
-                )),
+                ),
               ]),
               const SizedBox(height: 8),
               SizedBox(
@@ -501,20 +504,19 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
               ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Row(children: [
-                Expanded(child: ElevatedButton.icon(
+              child: Wrap(spacing: 8, runSpacing: 8, children: [
+                ElevatedButton.icon(
                   onPressed: () => _updateDocumentStatus(doc['id'], 'approved'),
                   icon: const Icon(Icons.check),
                   label: Text(tr('approve_btn')),
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                )),
-                const SizedBox(width: 8),
-                Expanded(child: ElevatedButton.icon(
+                ),
+                ElevatedButton.icon(
                   onPressed: () => _updateDocumentStatus(doc['id'], 'rejected'),
                   icon: const Icon(Icons.close),
                   label: Text(tr('reject_btn')),
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                )),
+                ),
               ]),
             ),
           ]),
@@ -565,10 +567,9 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
               ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Row(children: [
-                Expanded(child: ElevatedButton(onPressed: () => _updateVehicleStatus(v['user_id'], 'approved'), style: ElevatedButton.styleFrom(backgroundColor: Colors.green), child: Text(tr('approve_btn')))),
-                const SizedBox(width: 8),
-                Expanded(child: ElevatedButton(onPressed: () => _updateVehicleStatus(v['user_id'], 'rejected'), style: ElevatedButton.styleFrom(backgroundColor: Colors.red), child: Text(tr('reject_btn')))),
+              child: Wrap(spacing: 8, runSpacing: 8, children: [
+                ElevatedButton(onPressed: () => _updateVehicleStatus(v['user_id'], 'approved'), style: ElevatedButton.styleFrom(backgroundColor: Colors.green), child: Text(tr('approve_btn'))),
+                ElevatedButton(onPressed: () => _updateVehicleStatus(v['user_id'], 'rejected'), style: ElevatedButton.styleFrom(backgroundColor: Colors.red), child: Text(tr('reject_btn'))),
               ]),
             ),
           ]),
@@ -615,12 +616,10 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
                 child: Text(r['details'] ?? '', style: const TextStyle(height: 1.5))),
               const SizedBox(height: 12),
               if (status != 'resolved' && status != 'dismissed')
-                Row(children: [
-                  if (status == 'open') Expanded(child: OutlinedButton(onPressed: () => _updateReportStatus(r['id'], 'reviewing'), child: Text(tr('review_btn')))),
-                  if (status == 'open') const SizedBox(width: 8),
-                  Expanded(child: ElevatedButton(onPressed: () => _updateReportStatus(r['id'], 'resolved'), style: ElevatedButton.styleFrom(backgroundColor: Colors.green), child: Text(tr('resolve_and_close_btn')))),
-                  const SizedBox(width: 8),
-                  Expanded(child: ElevatedButton(onPressed: () => _updateReportStatus(r['id'], 'dismissed'), style: ElevatedButton.styleFrom(backgroundColor: Colors.grey), child: Text(tr('reject_btn')))),
+                Wrap(spacing: 8, runSpacing: 8, children: [
+                  if (status == 'open') OutlinedButton(onPressed: () => _updateReportStatus(r['id'], 'reviewing'), child: Text(tr('review_btn'))),
+                  ElevatedButton(onPressed: () => _updateReportStatus(r['id'], 'resolved'), style: ElevatedButton.styleFrom(backgroundColor: Colors.green), child: Text(tr('resolve_and_close_btn'))),
+                  ElevatedButton(onPressed: () => _updateReportStatus(r['id'], 'dismissed'), style: ElevatedButton.styleFrom(backgroundColor: Colors.grey), child: Text(tr('reject_btn'))),
                 ]),
             ]),
           ),
@@ -711,20 +710,22 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => Padding(
         padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text(tr('send_broadcast_title'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-          const SizedBox(height: 16),
-          TextField(controller: _notifTitleCtrl, decoration: InputDecoration(labelText: tr('notification_title_hint'), border: const OutlineInputBorder())),
-          const SizedBox(height: 12),
-          TextField(controller: _notifBodyCtrl, maxLines: 3, decoration: InputDecoration(labelText: tr('notification_body_hint'), border: const OutlineInputBorder())),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: _isSendingNotif ? null : () { Navigator.pop(ctx); _sendPushNotification(); },
-            icon: const Icon(Icons.send),
-            label: Text(tr('send_notification_btn')),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00897B), padding: const EdgeInsets.symmetric(vertical: 14)),
-          ),
-        ]),
+        child: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Text(tr('send_broadcast_title'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            const SizedBox(height: 16),
+            TextField(controller: _notifTitleCtrl, decoration: InputDecoration(labelText: tr('notification_title_hint'), border: const OutlineInputBorder())),
+            const SizedBox(height: 12),
+            TextField(controller: _notifBodyCtrl, maxLines: 3, decoration: InputDecoration(labelText: tr('notification_body_hint'), border: const OutlineInputBorder())),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _isSendingNotif ? null : () { Navigator.pop(ctx); _sendPushNotification(); },
+              icon: const Icon(Icons.send),
+              label: Text(tr('send_notification_btn')),
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00897B), padding: const EdgeInsets.symmetric(vertical: 14)),
+            ),
+          ]),
+        ),
       ),
     );
   }
@@ -766,15 +767,17 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('إضافة كود خصم جديد'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: codeCtrl, decoration: const InputDecoration(labelText: 'رمز الخصم (مثال: DORA2026)', border: OutlineInputBorder())),
-            const SizedBox(height: 12),
-            TextField(controller: amountCtrl, decoration: const InputDecoration(labelText: 'قيمة الخصم (دج)', border: OutlineInputBorder()), keyboardType: TextInputType.number),
-            const SizedBox(height: 12),
-            TextField(controller: daysCtrl, decoration: const InputDecoration(labelText: 'صلاحية الكود (بالأيام)', border: OutlineInputBorder()), keyboardType: TextInputType.number),
-          ],
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: codeCtrl, decoration: const InputDecoration(labelText: 'رمز الخصم (مثال: DORA2026)', border: OutlineInputBorder())),
+              const SizedBox(height: 12),
+              TextField(controller: amountCtrl, decoration: const InputDecoration(labelText: 'قيمة الخصم (دج)', border: OutlineInputBorder()), keyboardType: TextInputType.number),
+              const SizedBox(height: 12),
+              TextField(controller: daysCtrl, decoration: const InputDecoration(labelText: 'صلاحية الكود (بالأيام)', border: OutlineInputBorder()), keyboardType: TextInputType.number),
+            ],
+          ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
