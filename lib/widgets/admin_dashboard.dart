@@ -401,6 +401,143 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
     );
   }
 
+  Future<void> _grantGiftOrExemption(String userId, String type, dynamic value) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      if (type == 'topup') {
+        await _client.rpc('topup_wallet', params: {'p_user_id': userId, 'p_amount': value});
+        messenger.showSnackBar(const SnackBar(content: Text('تم إضافة الرصيد بنجاح!'), backgroundColor: Colors.green));
+      } else if (type == 'exemption') {
+        await _client.rpc('renew_subscription', params: {'p_user_id': userId, 'p_months': value});
+        messenger.showSnackBar(const SnackBar(content: Text('تم تمديد الاشتراك/الإعفاء بنجاح!'), backgroundColor: Colors.green));
+      }
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('حدث خطأ: $e'), backgroundColor: Colors.red));
+    }
+  }
+
+  void _showGiftsAndExemptionsDialog(String userId, String userName) {
+    final amountCtrl = TextEditingController();
+    int selectedMonths = 1;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            return Padding(
+              padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text('🎁 إدارة المكافآت: $userName', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFFE91E63))),
+                    const SizedBox(height: 24),
+                    
+                    // القسم الأول: شحن الرصيد
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.green.shade200)),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.account_balance_wallet, color: Colors.green),
+                              SizedBox(width: 8),
+                              Text('إهداء رصيد للمحفظة', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: amountCtrl,
+                                  decoration: const InputDecoration(labelText: 'المبلغ (دج)', border: OutlineInputBorder(), isDense: true),
+                                  keyboardType: TextInputType.number,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              ElevatedButton(
+                                onPressed: () {
+                                  final amount = double.tryParse(amountCtrl.text);
+                                  if (amount != null && amount > 0) {
+                                    Navigator.pop(ctx);
+                                    _grantGiftOrExemption(userId, 'topup', amount);
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                                child: const Text('إضافة', style: TextStyle(color: Colors.white)),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // القسم الثاني: الإعفاء والاشتراك
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(color: Colors.purple.shade50, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.purple.shade200)),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.workspace_premium, color: Colors.purple),
+                              SizedBox(width: 8),
+                              Text('منح اشتراك مجاني (إعفاء)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.purple)),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: DropdownButtonFormField<int>(
+                                  value: selectedMonths,
+                                  decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
+                                  items: const [
+                                    DropdownMenuItem(value: 1, child: Text('شهر واحد (1)')),
+                                    DropdownMenuItem(value: 3, child: Text('3 أشهر')),
+                                    DropdownMenuItem(value: 6, child: Text('6 أشهر')),
+                                    DropdownMenuItem(value: 12, child: Text('سنة كاملة (12)')),
+                                  ],
+                                  onChanged: (val) {
+                                    if (val != null) {
+                                      setModalState(() => selectedMonths = val);
+                                    }
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              ElevatedButton(
+                                onPressed: () {
+                                  Navigator.pop(ctx);
+                                  _grantGiftOrExemption(userId, 'exemption', selectedMonths);
+                                },
+                                style: ElevatedButton.styleFrom(backgroundColor: Colors.purple),
+                                child: const Text('منح', style: TextStyle(color: Colors.white)),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+        );
+      },
+    );
+  }
+
   // ══════════════════════════════════════
   // Tab: السائقات
   // ══════════════════════════════════════
@@ -444,10 +581,10 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: () => _showTopUpDialog(d['user_id'], d['full_name'] ?? 'السائقة'),
-                  icon: const Icon(Icons.account_balance_wallet, color: Colors.white),
-                  label: const Text('شحن الرصيد', style: TextStyle(color: Colors.white)),
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00897B)),
+                  onPressed: () => _showGiftsAndExemptionsDialog(d['user_id'], d['full_name'] ?? 'السائقة'),
+                  icon: const Icon(Icons.card_giftcard, color: Colors.white),
+                  label: const Text('هدايا وإعفاءات', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE91E63)),
                 ),
               ),
             ]),

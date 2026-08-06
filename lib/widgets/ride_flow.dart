@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
 import '../core/utils/file_utils.dart';
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import '../services/translation_service.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -129,6 +131,7 @@ class FreeMapPreview extends StatelessWidget {
     this.onCenterChanged,
     this.driverLocation,
     this.waitingRiderLocations = const [],
+    this.nearbyDrivers = const [],
     this.isRideStarted = false,
   });
 
@@ -140,6 +143,7 @@ class FreeMapPreview extends StatelessWidget {
   final ValueChanged<LatLng>? onCenterChanged;
   final LatLng? driverLocation;
   final List<LatLng> waitingRiderLocations;
+  final List<LatLng> nearbyDrivers;
   final bool isRideStarted;
 
   @override
@@ -204,13 +208,34 @@ class FreeMapPreview extends StatelessWidget {
       );
     }
 
+    // 4. السائقات القريبات الوهميات (لزيادة التفاعل)
+    for (final loc in nearbyDrivers) {
+      markers.add(
+        Marker(
+          point: loc,
+          width: 44,
+          height: 44,
+          child: RepaintBoundary(
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [BoxShadow(color: Colors.pink.withValues(alpha: 0.3), blurRadius: 6)],
+              ),
+              child: const Icon(Icons.directions_car_rounded, color: Colors.pink, size: 24),
+            ),
+          ),
+        ),
+      );
+    }
+
     return FlutterMap(
       options: MapOptions(
         initialCenter: center,
         initialZoom: 13,
         onPositionChanged: (position, hasGesture) {
-          if (showPickupMarker) {
-            onCenterChanged?.call(position.center);
+          if (onCenterChanged != null && position.center != null) {
+            onCenterChanged!(position.center!);
           }
         },
         interactionOptions: const InteractionOptions(
@@ -230,6 +255,7 @@ class FreeMapPreview extends StatelessWidget {
                 points: routePolyline!,
                 color: const Color(0xFFE91E63),
                 strokeWidth: 4.0,
+                isDotted: true,
               ),
             ],
           ),
@@ -262,7 +288,7 @@ class RideFlowScreen extends ConsumerStatefulWidget {
   ConsumerState<RideFlowScreen> createState() => _RideFlowScreenState();
 }
 
-class _RideFlowScreenState extends ConsumerState<RideFlowScreen> {
+class _RideFlowScreenState extends ConsumerState<RideFlowScreen> with TickerProviderStateMixin {
   final RideService _rideService = RideService();
   final LocationTrackingService _trackingService = LocationTrackingService();
   final TextEditingController _dropoffController = TextEditingController();
@@ -274,6 +300,15 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> {
   LatLng? pickupLocation;
   LatLng? dropoffLocation;
   List<LatLng>? _routePolyline;
+  
+  // Unified flow state
+  bool isSelectingDropoff = false;
+  String? _selectedRideType;
+  Map<String, double> _driverCounterOffers = {}; // To store local counter offers for each request
+  Timer? _debounceTimer;
+  bool _isSearchingForDriver = false;
+  AnimationController? _searchingAnimController;
+  Animation<double>? _pulseAnimation;
   double distanceKm = 8;
   int durationMinutes = 15;
   double proposedFare = 450;
@@ -321,6 +356,9 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> {
   bool isSharedRide = false;
   int sharedSeatsCount = 2;
   bool isIntercity = false;
+  String? _userRole;
+  Timer? _mockCarsTimer;
+  double _mockCarsPhase = 0.0;
 
   StreamSubscription<List<RideMessage>>? _messagesSubscription;
   StreamSubscription<Map<String, dynamic>?>? _locationSubscription;
@@ -331,10 +369,23 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> {
   String? _recordingPath;
   String? _currentlyPlayingPath;
   bool _isPlaying = false;
+  
+  // Promo variables
+  bool _hasPromo = true;
+  double _promoDiscount = 200;
+  bool _showPromoBanner = true;
 
   @override
   void initState() {
     super.initState();
+    _searchingAnimController = AnimationController(vsync: this, duration: const Duration(seconds: 1))..repeat(reverse: true);
+    _pulseAnimation = Tween<double>(begin: 0.8, end: 1.2).animate(CurvedAnimation(parent: _searchingAnimController!, curve: Curves.easeInOut));
+    
+    _mockCarsTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
+      if (mounted && _step == RideFlowStep.home) {
+        setState(() => _mockCarsPhase += 0.02);
+      }
+    });
     driverOffers = const [
       RideOffer(id: 'd1', name: 'سارة', rating: 4.9, carInfo: 'تويوتا كورولا', distanceKm: 2.1, etaMinutes: 4),
       RideOffer(id: 'd2', name: 'ريم', rating: 4.8, carInfo: 'هيونداي إلنترا', distanceKm: 3.4, etaMinutes: 7),
@@ -358,10 +409,16 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> {
       }
     });
 
-    Future.microtask(() {
-      final userId = ref.read(authProvider).userId ?? 'demo-user';
-      final role = isDriverMode ? 'driver' : 'rider';
-      _rideService.startNotificationListener(userId, role);
+    Future.microtask(() async {
+      final userId = ref.read(authProvider).userId;
+      if (userId != null) {
+        try {
+          final res = await Supabase.instance.client.from('user_profiles').select('role').eq('user_id', userId).maybeSingle();
+          if (res != null && mounted) setState(() => _userRole = res['role']);
+        } catch (_) {}
+      }
+      final notifRole = isDriverMode ? 'driver' : 'rider';
+      _rideService.startNotificationListener(userId ?? 'demo-user', notifRole);
     });
   }
 
@@ -388,6 +445,10 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> {
     _chatController.dispose();
     _audioRecorder.dispose();
     _audioPlayer.dispose();
+    _mockCarsTimer?.cancel();
+    _debounceTimer?.cancel();
+    _searchingAnimController?.dispose();
+    _autoOfflineTimer?.cancel();
     _messagesSubscription?.cancel();
     _locationSubscription?.cancel();
     _trackingService.stopTracking();
@@ -514,7 +575,54 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> {
               _handleBack();
             }
           },
-          child: _buildStepBody(),
+          child: Stack(
+            children: [
+              _buildStepBody(),
+              if (!isDriverMode && _showPromoBanner && _step == RideFlowStep.home)
+                Positioned(
+                  top: 90,
+                  left: 16,
+                  right: 16,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                      boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4))],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.local_offer, color: Colors.yellowAccent, size: 36),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('خصم حصري لكِ! 🎉', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                                    const SizedBox(height: 4),
+                                    Text('استمتعي بخصم ${_promoDiscount.toInt()} دج على رحلتك القادمة. (صالح لمدة 24 ساعة)', style: const TextStyle(color: Colors.white, fontSize: 12)),
+                                  ],
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.close, color: Colors.white70),
+                                onPressed: () => setState(() => _showPromoBanner = false),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -590,6 +698,47 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> {
     }
   }
 
+  Future<void> _reverseGeocodeCenter(LatLng center) async {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () async {
+      try {
+        List<Placemark> placemarks = await placemarkFromCoordinates(center.latitude, center.longitude);
+        if (placemarks.isNotEmpty) {
+          final place = placemarks.first;
+          final name = '${place.street ?? ''} ${place.locality ?? ''}'.trim();
+          if (mounted) {
+            setState(() {
+              if (isSelectingDropoff) {
+                dropoffLocation = center;
+                dropoffAddress = name.isNotEmpty ? name : 'موقع غير معروف';
+              } else {
+                pickupLocation = center;
+                pickupAddress = name.isNotEmpty ? name : 'موقع غير معروف';
+              }
+              // Calculate distance dynamically if both are set
+              if (pickupLocation != null && dropoffLocation != null) {
+                distanceKm = const Distance().as(LengthUnit.Kilometer, pickupLocation!, dropoffLocation!);
+                durationMinutes = (distanceKm * 3).round().clamp(1, 100);
+                
+                // Re-calculate suggested fare
+                final breakdown = RideService.calculateSuggestedFareDetailed(
+                  distanceKm: distanceKm,
+                  durationMinutes: durationMinutes,
+                );
+                proposedFare = RideService.minFareForEstimate(breakdown.totalFare);
+                
+                // Draw dotted line between the two points
+                _routePolyline = [pickupLocation!, dropoffLocation!];
+              }
+            });
+          }
+        }
+      } catch (e) {
+        debugPrint("Reverse geocoding error: $e");
+      }
+    });
+  }
+
   Widget _buildStepBody() {
     switch (_step) {
       case RideFlowStep.pickup:
@@ -625,48 +774,75 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> {
     final tr = ref.watch(translationProvider).tr;
     return Stack(
       children: [
-        SizedBox.expand(child: _buildMapPreview()),
+        SizedBox.expand(child: _buildMapPreview(showPickupMarker: false)),
+        
+        // Fixed Center Pin (Girl Avatar) for dragging
+        Center(
+          child: IgnorePointer(
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 60), // Offset to point to the exact center
+              child: const AnimatedWaitingRider(),
+            ),
+          ),
+        ),
+
+        // Searching Animation Overlay
+        if (_isSearchingForDriver)
+          Center(
+            child: AnimatedBuilder(
+              animation: _pulseAnimation!,
+              builder: (context, child) {
+                return Transform.scale(
+                  scale: _pulseAnimation!.value,
+                  child: Container(
+                    width: 140,
+                    height: 140,
+                    decoration: BoxDecoration(
+                      color: Colors.pink.withOpacity(0.2),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(color: Colors.pink.withOpacity(0.4), blurRadius: 40, spreadRadius: 15)
+                      ],
+                    ),
+                    child: const Icon(Icons.phone_android, size: 70, color: Colors.white),
+                  ),
+                );
+              },
+            ),
+          ),
+
+        // Top Search Bars
         Positioned(
           top: 16,
           left: 16,
           right: 16,
           child: SafeArea(
-            child: GlassContainer(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              borderRadius: 30,
-              child: Row(
-                children: [
-                  Icon(Icons.search, color: Theme.of(context).colorScheme.primary),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextField(
-                      readOnly: true,
-                      decoration: InputDecoration(
-                        hintText: tr('where_to_go'),
-                        border: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        filled: false,
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                      onTap: () => setState(() => _step = RideFlowStep.dropoff),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(Icons.mic, color: Theme.of(context).colorScheme.primary, size: 20),
-                  ),
-                ],
-              ),
+            child: Column(
+              children: [
+                _buildSearchInput(
+                  icon: Icons.my_location,
+                  iconColor: const Color(0xFF00897B),
+                  hint: tr('where_from'),
+                  value: pickupAddress,
+                  isActive: !isSelectingDropoff,
+                  onTap: () => setState(() => isSelectingDropoff = false),
+                ),
+                const SizedBox(height: 8),
+                _buildSearchInput(
+                  icon: Icons.location_on,
+                  iconColor: const Color(0xFFE91E63),
+                  hint: tr('where_to_go'),
+                  value: dropoffAddress,
+                  isActive: isSelectingDropoff,
+                  onTap: () => setState(() => isSelectingDropoff = true),
+                ),
+              ],
             ),
           ),
         ),
+
         Positioned(
-          bottom: 250,
+          bottom: 300,
           right: 24,
           child: FloatingActionButton(
             heroTag: 'location',
@@ -677,179 +853,239 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> {
             child: const Icon(Icons.my_location),
           ),
         ),
+        
+        // Bottom Action Panel
         Positioned(
           left: 0,
           right: 0,
           bottom: 0,
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 36),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(36)),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFFE91E63).withValues(alpha: 0.08),
-                  blurRadius: 32,
-                  spreadRadius: 5,
-                  offset: const Offset(0, -5),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                  child: Container(
-                    width: 48,
-                    height: 5,
-                    margin: const EdgeInsets.only(bottom: 20),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFE91E63), Color(0xFF00897B)],
-                      ),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(tr('available_drivers'), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
-                        Text(tr('near_you_now'), style: TextStyle(color: Colors.grey.shade500, fontSize: 13)),
-                      ],
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF00897B), Color(0xFF26A69A)],
-                        ),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        '${driverOffers.length} ${tr('online_drivers_count')}',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFFE91E63), Color(0xFFFF5F9E)],
-                          ),
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(color: const Color(0xFFE91E63).withValues(alpha: 0.4), blurRadius: 12, offset: const Offset(0, 4)),
-                          ],
-                        ),
-                        child: ElevatedButton(
-                          onPressed: () => setState(() {
-                            isIntercity = false;
-                            _step = RideFlowStep.pickup;
-                          }),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            shadowColor: Colors.transparent,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                          ),
-                          child: Column(
-                            children: [
-                              const Icon(Icons.location_city, size: 28, color: Colors.white),
-                              const SizedBox(height: 4),
-                              Text(tr('inside_city'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF00897B), Color(0xFF26A69A)],
-                          ),
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(color: const Color(0xFF00897B).withValues(alpha: 0.4), blurRadius: 12, offset: const Offset(0, 4)),
-                          ],
-                        ),
-                        child: ElevatedButton(
-                          onPressed: () => setState(() {
-                            isIntercity = true;
-                            _step = RideFlowStep.pickup;
-                          }),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            shadowColor: Colors.transparent,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                          ),
-                          child: Column(
-                            children: [
-                              const Icon(Icons.commute, size: 28, color: Colors.white),
-                              const SizedBox(height: 4),
-                              Text(tr('intercity_travel'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => setState(() {
-                          isDriverMode = true;
-                          selectedRequest = null;
-                          _step = RideFlowStep.driverRequests;
-                          _setDriverOnline(true);
-                        }),
-                        icon: const Icon(Icons.drive_eta_rounded),
-                        label: Text(tr('driver_mode')),
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Color(0xFFE91E63), width: 1.5),
-                          foregroundColor: const Color(0xFFE91E63),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextButton.icon(
-                        onPressed: () => setState(() => _step = RideFlowStep.earnings),
-                        icon: const Icon(Icons.bar_chart_rounded),
-                        label: Text(tr('earnings')),
-                        style: TextButton.styleFrom(
-                          backgroundColor: const Color(0xFFF3E5F5),
-                          foregroundColor: const Color(0xFF7B1FA2),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+          child: _buildUnifiedBottomPanel(tr),
         ),
       ],
     );
+  }
+
+  Widget _buildSearchInput({
+    required IconData icon,
+    required Color iconColor,
+    required String hint,
+    required String value,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: GlassContainer(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        borderRadius: 20,
+        border: isActive ? Border.all(color: iconColor, width: 2) : Border.all(color: Colors.transparent),
+        child: Row(
+          children: [
+            Icon(icon, color: iconColor),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                value == 'الوجهة' || value == 'اختر نقطة الانطلاق' ? hint : value,
+                style: TextStyle(
+                  color: (value == 'الوجهة' || value == 'اختر نقطة الانطلاق') ? Colors.grey : Colors.black87,
+                  fontSize: 16,
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUnifiedBottomPanel(String Function(String) tr) {
+    // If locations are not fully set, just show a prompt
+    if (pickupLocation == null || dropoffLocation == null) {
+      return Container(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 36),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(36)),
+          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 20, offset: Offset(0, -5))],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 48, height: 5, margin: const EdgeInsets.only(bottom: 20), decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10))),
+            Text('حدد نقطة الانطلاق والوجهة على الخريطة', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey.shade700)),
+          ],
+        ),
+      );
+    }
+
+    final breakdown = RideService.calculateSuggestedFareDetailed(distanceKm: distanceKm, durationMinutes: durationMinutes);
+    final sharedFare = RideService.minFareForEstimate(breakdown.totalFare / sharedSeatsCount);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 36),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(36)),
+        boxShadow: [BoxShadow(color: const Color(0xFFE91E63).withOpacity(0.1), blurRadius: 32, spreadRadius: 5, offset: const Offset(0, -5))],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Container(
+              width: 48, height: 5, margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFE91E63), Color(0xFF00897B)]), borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+          
+          if (_selectedRideType != null)
+            Align(
+              alignment: Alignment.centerRight,
+              child: IconButton(
+                icon: const Icon(Icons.arrow_forward_ios, size: 18),
+                onPressed: () => setState(() => _selectedRideType = null),
+                color: Colors.grey,
+              ),
+            ),
+            
+          Row(
+            textDirection: TextDirection.rtl, // لضمان أن اليمين هو البداية
+            children: [
+              // الزر الأيمن (فردية أو تفاوض)
+              Expanded(
+                flex: _selectedRideType != null ? 3 : 1,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  height: 110,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: [Color(0xFFE91E63), Color(0xFFFF5F9E)]),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [BoxShadow(color: const Color(0xFFE91E63).withOpacity(0.4), blurRadius: 12, offset: const Offset(0, 4))],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: _selectedRideType == null ? () => setState(() => _selectedRideType = 'solo') : null,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: _selectedRideType == 'solo'
+                            ? Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text('تسعيرة الرحلة الفردية', style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14)),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                    children: [
+                                      IconButton(
+                                        padding: EdgeInsets.zero,
+                                        onPressed: () => setState(() => proposedFare = (proposedFare - 50).clamp(100.0, 5000.0)),
+                                        icon: const Icon(Icons.remove_circle, color: Colors.white, size: 36),
+                                      ),
+                                      Text('${proposedFare.toInt()} دج', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+                                      IconButton(
+                                        padding: EdgeInsets.zero,
+                                        onPressed: () => setState(() => proposedFare = (proposedFare + 50).clamp(100.0, 5000.0)),
+                                        icon: const Icon(Icons.add_circle, color: Colors.white, size: 36),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              )
+                            : _selectedRideType == 'shared'
+                                ? Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text('تسعيرة الرحلة التشاركية', style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14)),
+                                      const SizedBox(height: 8),
+                                      Text('${sharedFare.toInt()} دج', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+                                    ],
+                                  )
+                                : Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(Icons.person, color: Colors.white, size: 32),
+                                      const SizedBox(height: 8),
+                                      const Text('رحلة فردية', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                                      Text('${distanceKm.toStringAsFixed(1)} كم', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                                    ],
+                                  ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // الزر الأيسر (تشاركية أو تأكيد)
+              Expanded(
+                flex: _selectedRideType != null ? 2 : 1,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  height: 110,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: [Color(0xFF00897B), Color(0xFF26A69A)]),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [BoxShadow(color: const Color(0xFF00897B).withOpacity(0.4), blurRadius: 12, offset: const Offset(0, 4))],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: _selectedRideType == null
+                          ? () => setState(() => _selectedRideType = 'shared')
+                          : () => _startSearching(isShared: _selectedRideType == 'shared'),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: _selectedRideType != null
+                            ? const Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.check_circle, color: Colors.white, size: 36),
+                                  SizedBox(height: 8),
+                                  Text('تأكيد الطلب', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                                ],
+                              )
+                            : const Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.people, color: Colors.white, size: 32),
+                                  SizedBox(height: 8),
+                                  Text('تشاركية', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                                  Text('اقتصادية', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                                ],
+                              ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _startSearching({required bool isShared}) {
+    setState(() {
+      isSharedRide = isShared;
+      _isSearchingForDriver = true;
+    });
+    
+    // Simulate searching delay
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() {
+          _isSearchingForDriver = false;
+          _step = RideFlowStep.drivers; // Transition to drivers view
+        });
+      }
+    });
   }
 
   Widget _buildPickupStep() {
@@ -1444,94 +1680,217 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> {
           ),
           const SizedBox(height: 12),
           Expanded(
-            child: ListView.separated(
-              itemCount: pendingRequests.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 10),
-              itemBuilder: (context, index) {
-                // ترتيب الطلبات من الأقرب للأبعد (خوارزمية الفرز المكاني)
-                final sortedRequests = List<RideRequest>.from(pendingRequests)..sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
-                final request = sortedRequests[index];
-                return Card(
-                  child: ListTile(
-                    title: Row(
-                      children: [
-                        Expanded(child: Text('${request.pickup} → ${request.dropoff}')),
-                        if (request.isShared)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: request.rideType == 'shared_intercity' ? Colors.blue.shade100 : Colors.purple.shade100,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: request.rideType == 'shared_intercity' ? Colors.blue.shade300 : Colors.purple.shade300),
+            child: Stack(
+              children: [
+                ListView.separated(
+                  itemCount: pendingRequests.length,
+                  separatorBuilder: (context, index) => const SizedBox(height: 10),
+                  itemBuilder: (context, index) {
+                    // ترتيب الطلبات من الأقرب للأبعد (خوارزمية الفرز المكاني)
+                    final sortedRequests = List<RideRequest>.from(pendingRequests)..sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
+                    final request = sortedRequests[index];
+                    final currentFare = _driverCounterOffers[request.id] ?? request.proposedFare;
+
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(child: Text('${request.pickup} → ${request.dropoff}', style: const TextStyle(fontWeight: FontWeight.bold))),
+                                if (request.isShared)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: request.rideType == 'shared_intercity' ? Colors.blue.shade100 : Colors.purple.shade100,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: request.rideType == 'shared_intercity' ? Colors.blue.shade300 : Colors.purple.shade300),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          request.rideType == 'shared_intercity' ? Icons.emoji_transportation : Icons.location_city, 
+                                          size: 14, 
+                                          color: request.rideType == 'shared_intercity' ? Colors.blue.shade700 : Colors.purple
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          request.rideType == 'shared_intercity' ? tr('shared_intercity_tag') : tr('shared_city_tag'), 
+                                          style: TextStyle(
+                                            fontSize: 10, 
+                                            color: request.rideType == 'shared_intercity' ? Colors.blue.shade700 : Colors.purple, 
+                                            fontWeight: FontWeight.bold
+                                          )
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
                             ),
-                            child: Row(
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Icon(Icons.location_on, size: 14, color: Colors.grey.shade600),
+                                const SizedBox(width: 4),
+                                Text('${tr('distance_from_you')} ${request.distanceKm.toStringAsFixed(1)} كم', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            // منطقة التسعير والتفاوض المدمجة
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade50,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.grey.shade200),
+                              ),
+                              child: Row(
+                                children: [
+                                  if (!request.isShared)
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(),
+                                          icon: Icon(Icons.remove_circle_outline, color: Theme.of(context).colorScheme.primary, size: 28),
+                                          onPressed: () => setState(() => _driverCounterOffers[request.id] = (currentFare - 50).clamp(100.0, 5000.0)),
+                                        ),
+                                        const SizedBox(width: 8),
+                                      ],
+                                    ),
+                                  Expanded(
+                                    child: Center(
+                                      child: Column(
+                                        children: [
+                                          Text(request.isShared ? 'سعر ثابت' : 'السعر المعروض', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                                          Text('${currentFare.toInt()} دج', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  if (!request.isShared)
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const SizedBox(width: 8),
+                                        IconButton(
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(),
+                                          icon: Icon(Icons.add_circle_outline, color: Theme.of(context).colorScheme.primary, size: 28),
+                                          onPressed: () => setState(() => _driverCounterOffers[request.id] = (currentFare + 50).clamp(100.0, 5000.0)),
+                                        ),
+                                      ],
+                                    ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: ElevatedButton(
+                                    onPressed: () {
+                                      setState(() {
+                                        selectedRequest = RideRequest(
+                                          id: request.id,
+                                          pickup: request.pickup,
+                                          dropoff: request.dropoff,
+                                          proposedFare: currentFare,
+                                          status: request.status,
+                                          pin: request.pin,
+                                          isShared: request.isShared,
+                                          rideType: request.rideType,
+                                          distanceKm: request.distanceKm,
+                                        );
+                                        selectedDriverName = 'أنت';
+                                        _step = RideFlowStep.activeRide;
+                                      });
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: request.isShared ? Colors.green : Theme.of(context).colorScheme.primary,
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    ),
+                                    child: Text(tr('accept_btn'), style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                if (_userRole != 'driver')
+                  Positioned.fill(
+                    child: ClipRRect(
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 3.0, sigmaY: 3.0),
+                        child: Container(
+                          color: Colors.white.withValues(alpha: 0.3),
+                          alignment: Alignment.center,
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 24),
+                            padding: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFFE91E63).withValues(alpha: 0.3),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
+                              border: Border.all(color: const Color(0xFFE91E63).withValues(alpha: 0.5), width: 2),
+                            ),
+                            child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(
-                                  request.rideType == 'shared_intercity' ? Icons.emoji_transportation : Icons.location_city, 
-                                  size: 14, 
-                                  color: request.rideType == 'shared_intercity' ? Colors.blue.shade700 : Colors.purple
+                                const Icon(Icons.directions_car_rounded, size: 64, color: Color(0xFFE91E63)),
+                                const SizedBox(height: 16),
+                                const Text(
+                                  'أرباح رائعة في انتظارك!',
+                                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+                                  textAlign: TextAlign.center,
                                 ),
-                                const SizedBox(width: 4),
+                                const SizedBox(height: 8),
                                 Text(
-                                  request.rideType == 'shared_intercity' ? tr('shared_intercity_tag') : tr('shared_city_tag'), 
-                                  style: TextStyle(
-                                    fontSize: 10, 
-                                    color: request.rideType == 'shared_intercity' ? Colors.blue.shade700 : Colors.purple, 
-                                    fontWeight: FontWeight.bold
-                                  )
+                                  'هذه الطلبات حقيقية ومتاحة الآن. انضمي كسائقة معتمدة لتبدئي بقبول الطلبات وجني الأرباح فوراً.',
+                                  style: TextStyle(fontSize: 14, color: Colors.grey.shade700, height: 1.5),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 24),
+                                ElevatedButton(
+                                  onPressed: () async {
+                                    final result = await Navigator.push(context, MaterialPageRoute(builder: (_) => const DriverRegistrationScreen()));
+                                    if (result == true && mounted) {
+                                      setState(() => _userRole = 'pending_driver');
+                                    }
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFE91E63),
+                                    foregroundColor: Colors.white,
+                                    minimumSize: const Size(double.infinity, 50),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  ),
+                                  child: const Text('سجلي كسائقة الآن', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                                 ),
                               ],
                             ),
                           ),
-                      ],
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 4),
-                        Text('${tr('fare_label')} ${request.proposedFare.toInt()} دج${request.isShared ? tr('half_price') : ''}'),
-                        const SizedBox(height: 2),
-                        Row(
-                          children: [
-                            Icon(Icons.location_on, size: 14, color: Colors.grey.shade600),
-                            const SizedBox(width: 4),
-                            Text('${tr('distance_from_you')} ${request.distanceKm.toStringAsFixed(1)} كم', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
-                          ],
                         ),
-                      ],
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        TextButton(
-                          onPressed: () {
-                            setState(() {
-                              selectedRequest = request;
-                              selectedDriverName = 'أنت';
-                              _step = RideFlowStep.negotiation;
-                            });
-                          },
-                          child: Text(tr('negotiate_btn'), style: const TextStyle(color: Color(0xFFE91E63), fontWeight: FontWeight.bold)),
-                        ),
-                        ElevatedButton(
-                          onPressed: () {
-                            setState(() {
-                              selectedRequest = request;
-                              selectedDriverName = 'أنت';
-                              _step = RideFlowStep.activeRide;
-                            });
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: request.isShared ? Colors.green : Theme.of(context).colorScheme.primary,
-                          ),
-                          child: Text(tr('accept_btn'), style: const TextStyle(color: Colors.white)),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
-                );
-              },
+              ],
             ),
           ),
           const SizedBox(height: 12),
@@ -1551,6 +1910,23 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> {
     );
   }
 
+  bool get canReceiveRequests {
+    if (!isDriverOnline) return false;
+    
+    // إذا لم تكن في رحلة نشطة، يمكنها استقبال الطلبات
+    if (_step != RideFlowStep.activeRide) return true;
+    
+    // إذا كانت في رحلة نشطة:
+    // تفعيل ميزة (Queue Next Ride) الجميلة:
+    // تظهر الطلبات الجديدة فقط إذا بدأت الرحلة وكانت المسافة المتبقية للوصول 10 كم أو أقل.
+    // هذا يمنع الطمع والإلغاء في بداية الرحلة!
+    if (isDriverMode && isRideStarted && distanceKm <= 10.0) {
+      return true;
+    }
+    
+    return false;
+  }
+
   void _setDriverOnline(bool value) {
     if (value == isDriverOnline) return;
     setState(() => isDriverOnline = value);
@@ -1566,7 +1942,7 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> {
       
       // محاكاة وصول طلب جديد مع رنين بعد 3 ثوانٍ من الاتصال
       Timer(const Duration(seconds: 3), () {
-        if (mounted && isDriverOnline) {
+        if (mounted && canReceiveRequests) {
           _showIncomingRideAlert();
         }
       });
@@ -1578,9 +1954,9 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> {
 
   void _showIncomingRideAlert() {
     final tr = ref.read(translationProvider).tr;
-    // في بيئة الإنتاج نقوم بتشغيل صوت الرنين هكذا:
-    // _audioPlayer.play(AssetSource('sounds/ringtone.mp3'));
-    
+    // تشغيل نغمة رنين جذابة ومريحة للسائقة
+    _audioPlayer.play(UrlSource('https://cdn.pixabay.com/download/audio/2021/08/04/audio_0625c1539c.mp3'));
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -1809,7 +2185,44 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> {
                           style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
                         )),
                       ],
-                    )
+                    ),
+                  if (isDriverMode && isRideStarted) ...[
+                    const SizedBox(height: 16),
+                    const Text('محاكاة المسافة للوصول (لاختبار ميزة الرحلة التالية):', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                    Slider(
+                      value: distanceKm.clamp(0.0, 50.0),
+                      min: 0,
+                      max: 50,
+                      divisions: 50,
+                      activeColor: distanceKm <= 10 ? Colors.green : Colors.pink,
+                      label: '${distanceKm.toInt()} كم',
+                      onChanged: (val) {
+                        setState(() {
+                          final wasAble = canReceiveRequests;
+                          distanceKm = val;
+                          final isAble = canReceiveRequests;
+                          if (!wasAble && isAble) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('تم تفعيل (الرحلة التالية)! المسافة الآن 10 كم أو أقل، ستبدأ الطلبات بالظهور.', style: TextStyle(fontWeight: FontWeight.bold)),
+                                backgroundColor: Colors.green,
+                              )
+                            );
+                            // محاكاة وصول طلب فور دخول المنطقة المسموحة
+                            Timer(const Duration(seconds: 2), () {
+                              if (mounted && canReceiveRequests) _showIncomingRideAlert();
+                            });
+                          }
+                        });
+                      },
+                    ),
+                    if (distanceKm <= 10)
+                      const Text('✅ ميزة (استلام رحلات أثناء القيادة) مفعلة!', style: TextStyle(color: Colors.green, fontSize: 12)),
+                  ],
+                ],
+              ),
+            ),
+          ),
                   else
                     Column(
                       children: [
@@ -2387,12 +2800,18 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> {
     final commission = RideService.calculateCommission(receiptFare);
     final net = RideService.calculateNetEarnings(receiptFare);
     final rideDate = ride != null ? ride['date'] as String : currentRideDate;
+
+    // Promo calculation
+    final isPromoApplied = !isDriverMode && _hasPromo;
+    final finalRiderFare = isPromoApplied ? (receiptFare - _promoDiscount).clamp(0.0, double.infinity) : receiptFare;
+    final driverCompensation = _hasPromo ? _promoDiscount : 0.0;
+
     final summary = RideService.buildReceiptSummary(
       riderName: isDriverMode ? 'الراكبة' : 'سارة',
       driverName: selectedDriverName,
       pickup: isDriverMode && selectedRequest != null ? selectedRequest!.pickup : pickupAddress,
       dropoff: isDriverMode && selectedRequest != null ? selectedRequest!.dropoff : dropoffAddress,
-      fare: receiptFare,
+      fare: isDriverMode ? receiptFare : finalRiderFare, // Rider sees discounted fare
       date: rideDate,
     );
 
@@ -2410,12 +2829,25 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> {
                   const SizedBox(height: 8),
                   Text(summary),
                   const SizedBox(height: 12),
-                  if (!isDriverMode) Text('${tr('base_fare_label')} 250 دج'),
-                  if (!isDriverMode) Text('${tr('per_km_label')} 240 دج'),
-                  if (!isDriverMode) Text('${tr('per_minute_label')} 15 دج'),
-                  Text('${tr('total_label')} ${receiptFare.toInt()} دج'),
-                  if (isDriverMode) Text('${tr('commission_label')} ${commission.toInt()} دج'),
-                  if (isDriverMode) Text('${tr('net_label')} ${net.toInt()} دج'),
+                  
+                  if (!isDriverMode) ...[
+                    Text('${tr('total_label')} ${receiptFare.toInt()} دج'),
+                    if (isPromoApplied) Text('كود خصم مستخدم: -${_promoDiscount.toInt()} دج', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                    const Divider(),
+                    Text('المطلوب دفعه: ${finalRiderFare.toInt()} دج', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFE91E63))),
+                  ],
+
+                  if (isDriverMode) ...[
+                    Text('${tr('total_label')} ${receiptFare.toInt()} دج'),
+                    if (_hasPromo) ...[
+                      Text('الدفع النقدي من الراكبة: ${(receiptFare - driverCompensation).clamp(0.0, double.infinity).toInt()} دج', style: const TextStyle(color: Colors.redAccent)),
+                      Text('تعويض الخصم من DORA: +${driverCompensation.toInt()} دج', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                      Text('(تم إضافة التعويض إلى محفظتك بنجاح)', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                    ],
+                    const Divider(),
+                    Text('${tr('commission_label')} ${commission.toInt()} دج'),
+                    Text('إجمالي الربح (الصافي + التعويض): ${(net).toInt()} دج', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+                  ],
                 ],
               ),
             ),
@@ -2619,7 +3051,10 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> {
     LatLng? sharedStop;
     List<LatLng>? displayPolyline = _routePolyline;
     
-    if (isSharedRide && pickupLocation != null && dropoffLocation != null) {
+    // إخفاء الخط (المتقطع أو المسار) أثناء الرحلة النشطة ليتم التركيز فقط على تتبع سيارة السائقة
+    if (_step == RideFlowStep.activeRide) {
+      displayPolyline = null;
+    } else if (isSharedRide && pickupLocation != null && dropoffLocation != null) {
       sharedStop = LatLng(
         (pickupLocation!.latitude + dropoffLocation!.latitude) / 2 + 0.005,
         (pickupLocation!.longitude + dropoffLocation!.longitude) / 2 - 0.005,
@@ -2628,18 +3063,59 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> {
       displayPolyline = [pickupLocation!, sharedStop, dropoffLocation!];
     }
 
+    // سيارات وهمية جذابة حول المركز في الشاشة الرئيسية
+    List<LatLng> mockDrivers = [];
+    List<LatLng> mockRiders = [];
+    if (_step == RideFlowStep.home) {
+      // نظام الابتعاد الذكي: إبعاد السيارات الوهمية والراكبات بمسافة معقولة حتى لا تغطي موقع السائقة
+      final bool isWorkingDriver = _userRole == 'driver' && isDriverOnline;
+      
+      // لا نظهر الوهميات للسائقة إلا إذا كانت في وضع العمل أو كانت مستخدمة عادية
+      if (_userRole != 'driver' || isWorkingDriver) {
+        mockDrivers = [
+          // متوقفة
+          LatLng(location.latitude + 0.002, location.longitude + 0.003),
+          LatLng(location.latitude - 0.003, location.longitude + 0.001),
+          // تتحرك في دوائر صغيرة
+          LatLng(
+              location.latitude + 0.004 + math.sin(_mockCarsPhase) * 0.001,
+              location.longitude - 0.004 + math.cos(_mockCarsPhase) * 0.001),
+          LatLng(
+              location.latitude - 0.001 + math.cos(_mockCarsPhase * 0.8) * 0.0015,
+              location.longitude - 0.005 + math.sin(_mockCarsPhase * 0.8) * 0.0015),
+        ];
+
+        // إضافة 5 راكبات وهميات يظهرن ويختفين في أماكن متفرقة بشكل مستقل
+        mockRiders = List.generate(5, (index) {
+          // كل راكبة لها توقيت (Phase) مختلف لكي لا يختفين ويظهرن في نفس اللحظة
+          final int avatarPhase = (_mockCarsPhase * (0.2 + (index * 0.05))).floor();
+          final math.Random rand = math.Random(avatarPhase + index * 100);
+          
+          // نوزعهم على مسافات مرئية حول السائقة (بين 0.004 و 0.015 درجة)
+          double dx = (rand.nextDouble() * 0.02 - 0.01);
+          double dy = (rand.nextDouble() * 0.02 - 0.01);
+          
+          // ضمان ابتعادهم بمسافة لا تقل عن حد معين حتى لا يتكدسوا فوق السائقة
+          if (dx.abs() < 0.004) dx += dx >= 0 ? 0.004 : -0.004;
+          if (dy.abs() < 0.004) dy += dy >= 0 ? 0.004 : -0.004;
+          
+          return LatLng(location.latitude + dx, location.longitude + dy);
+        });
+      }
+    }
+
     return FreeMapPreview(
       center: location,
       showPickupMarker: showPickupMarker,
       pickupLocation: pickupLocation,
       dropoffLocation: dropoffLocation,
       routePolyline: displayPolyline,
-      waitingRiderLocations: sharedStop != null ? [sharedStop] : const [],
-      onCenterChanged: showPickupMarker
-          ? (value) => setState(() {
-              pickupLocation = value;
-            })
-          : null,
+      waitingRiderLocations: [
+        if (sharedStop != null) sharedStop,
+        ...mockRiders,
+      ],
+      nearbyDrivers: mockDrivers,
+      onCenterChanged: _reverseGeocodeCenter,
     );
   }
 
