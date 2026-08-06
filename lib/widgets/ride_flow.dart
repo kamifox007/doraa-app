@@ -2637,11 +2637,7 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> with TickerProv
             ),
           ),
         ],
-      ),
-    ),
-        ),
-      ],
-    );
+      );
   }
 
   Widget _buildAudioMessage(String message) {

@@ -302,7 +302,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     
     return GlassContainer(
       padding: const EdgeInsets.all(24),
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: 24,
       blur: 20,
       opacity: 0.15,
       child: Column(
@@ -407,7 +407,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
 
     return GlassContainer(
       padding: const EdgeInsets.all(20),
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: 20,
       opacity: 0.1,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -473,7 +473,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
         ),
         const SizedBox(height: 12),
         GlassContainer(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: 20,
           opacity: 0.1,
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: ListView.separated(
@@ -548,7 +548,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
 
     return GlassContainer(
       padding: const EdgeInsets.all(20),
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: 20,
       opacity: 0.1,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -564,7 +564,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
           if (isFreeNow) 
             Container(
               padding: const EdgeInsets.all(8),
-              margin: const EdgeInsets.bottom(16),
+              margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(8)),
               child: const Text('🎉 أنتِ الآن تتمتعين بإعفاء تام من العمولة (0%)!', style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 13)),
             ),
@@ -659,7 +659,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   }) {
     return GlassContainer(
       padding: const EdgeInsets.all(20),
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: 16,
       opacity: 0.1,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
