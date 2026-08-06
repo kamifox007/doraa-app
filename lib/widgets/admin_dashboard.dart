@@ -214,60 +214,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
     } catch (e) { messenger.showSnackBar(SnackBar(content: Text('${tr('error_occurred_prefix')} $e'))); }
   }
 
-  // ══════════════════════════════════════
-  // Action: شحن رصيد السائقة
-  // ══════════════════════════════════════
-  Future<void> _topUpDriverWallet(String userId, double amount) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final tr = ref.read(translationProvider).tr;
-    try {
-      // استدعاء الدالة المخزنة في Supabase
-      await _client.rpc('topup_wallet', params: {
-        'p_user_id': userId,
-        'p_amount': amount,
-        'p_description': 'Admin Top-Up via Dashboard'
-      });
-      messenger.showSnackBar(SnackBar(content: Text('تم شحن الرصيد بنجاح!'), backgroundColor: Colors.green));
-      _fetchPendingDrivers(); // تحديث القائمة لرؤية الرصيد الجديد إذا كان معروضاً
-    } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('${tr('error_occurred_prefix')} $e'), backgroundColor: Colors.red));
-    }
-  }
 
-  void _showTopUpDialog(String userId, String driverName) {
-    final amountCtrl = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('شحن رصيد: $driverName'),
-        content: SingleChildScrollView(
-          child: TextField(
-            controller: amountCtrl,
-            decoration: const InputDecoration(
-              labelText: 'المبلغ (دج)',
-              hintText: 'مثال: 2000',
-              border: OutlineInputBorder(),
-            ),
-            keyboardType: TextInputType.number,
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
-          ElevatedButton(
-            onPressed: () {
-              final amount = double.tryParse(amountCtrl.text);
-              if (amount != null && amount > 0) {
-                Navigator.pop(ctx);
-                _topUpDriverWallet(userId, amount);
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00897B)),
-            child: const Text('شحن الآن'),
-          ),
-        ],
-      ),
-    );
-  }
 
   Future<void> _sendPushNotification() async {
     if (_notifTitleCtrl.text.isEmpty || _notifBodyCtrl.text.isEmpty) return;
@@ -499,7 +446,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
                             children: [
                               Expanded(
                                 child: DropdownButtonFormField<int>(
-                                  value: selectedMonths,
+                                  initialValue: selectedMonths,
                                   decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
                                   items: const [
                                     DropdownMenuItem(value: 1, child: Text('شهر واحد (1)')),
@@ -977,7 +924,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
                       subtitle: Text('${tr('discount_amount_label')} ${p['discount_amount']} دج'),
                       trailing: Switch(
                         value: isActive,
-                        activeColor: const Color(0xFF00897B),
+                        activeThumbColor: const Color(0xFF00897B),
                         onChanged: (val) => _togglePromoCode(p['id'].toString(), isActive),
                       ),
                     );

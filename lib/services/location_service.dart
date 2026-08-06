@@ -29,7 +29,7 @@ class LocationTrackingService {
       return;
     }
 
-    DateTime? _lastDbUpdateTime;
+    DateTime? lastDbUpdateTime;
 
     _subscription = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
@@ -42,8 +42,8 @@ class LocationTrackingService {
 
       // 2. إرسال البيانات لقاعدة البيانات كل 5 ثوانٍ فقط لتجنب الضغط واستهلاك الإنترنت
       final now = DateTime.now();
-      if (_lastDbUpdateTime == null || now.difference(_lastDbUpdateTime!).inSeconds >= 5) {
-        _lastDbUpdateTime = now;
+      if (lastDbUpdateTime == null || now.difference(lastDbUpdateTime!).inSeconds >= 5) {
+        lastDbUpdateTime = now;
         await RideService().insertLocationUpdate(
           rideId: rideId,
           latitude: position.latitude,

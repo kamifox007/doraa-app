@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+// import 'package:flutter/foundation.dart'; // removed for linter
 import '../core/utils/file_utils.dart';
 import 'dart:async';
 import 'dart:math' as math;
@@ -236,8 +236,8 @@ class FreeMapPreview extends StatelessWidget {
         initialCenter: center,
         initialZoom: 13,
         onPositionChanged: (position, hasGesture) {
-          if (onCenterChanged != null && position.center != null) {
-            onCenterChanged!(position.center!);
+          if (onCenterChanged != null) {
+            onCenterChanged!(position.center);
           }
         },
         interactionOptions: const InteractionOptions(
@@ -305,7 +305,7 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> with TickerProv
   // Unified flow state
   bool isSelectingDropoff = false;
   String? _selectedRideType;
-  Map<String, double> _driverCounterOffers = {}; // To store local counter offers for each request
+  final Map<String, double> _driverCounterOffers = {}; // To store local counter offers for each request
   Timer? _debounceTimer;
   bool _isSearchingForDriver = false;
   AnimationController? _searchingAnimController;
@@ -372,8 +372,8 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> with TickerProv
   bool _isPlaying = false;
   
   // Promo variables
-  bool _hasPromo = true;
-  double _promoDiscount = 200;
+  final bool _hasPromo = true;
+  final double _promoDiscount = 200;
   bool _showPromoBanner = true;
 
   @override
@@ -799,10 +799,10 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> with TickerProv
                     width: 140,
                     height: 140,
                     decoration: BoxDecoration(
-                      color: Colors.pink.withOpacity(0.2),
+                      color: Colors.pink.withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                       boxShadow: [
-                        BoxShadow(color: Colors.pink.withOpacity(0.4), blurRadius: 40, spreadRadius: 15)
+                        BoxShadow(color: Colors.pink.withValues(alpha: 0.4), blurRadius: 40, spreadRadius: 15)
                       ],
                     ),
                     child: const Icon(Icons.phone_android, size: 70, color: Colors.white),
@@ -929,7 +929,7 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> with TickerProv
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(36)),
-        boxShadow: [BoxShadow(color: const Color(0xFFE91E63).withOpacity(0.1), blurRadius: 32, spreadRadius: 5, offset: const Offset(0, -5))],
+        boxShadow: [BoxShadow(color: const Color(0xFFE91E63).withValues(alpha: 0.1), blurRadius: 32, spreadRadius: 5, offset: const Offset(0, -5))],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -964,7 +964,7 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> with TickerProv
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(colors: [Color(0xFFE91E63), Color(0xFFFF5F9E)]),
                     borderRadius: BorderRadius.circular(20),
-                    boxShadow: [BoxShadow(color: const Color(0xFFE91E63).withOpacity(0.4), blurRadius: 12, offset: const Offset(0, 4))],
+                    boxShadow: [BoxShadow(color: const Color(0xFFE91E63).withValues(alpha: 0.4), blurRadius: 12, offset: const Offset(0, 4))],
                   ),
                   child: Material(
                     color: Colors.transparent,
@@ -977,7 +977,7 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> with TickerProv
                             ? Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Text('تسعيرة الرحلة الفردية', style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14)),
+                                  Text('تسعيرة الرحلة الفردية', style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 14)),
                                   const SizedBox(height: 8),
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -1001,7 +1001,7 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> with TickerProv
                                 ? Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Text('تسعيرة الرحلة التشاركية', style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14)),
+                                      Text('تسعيرة الرحلة التشاركية', style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 14)),
                                       const SizedBox(height: 8),
                                       Text('${sharedFare.toInt()} دج', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
                                     ],
@@ -1030,7 +1030,7 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> with TickerProv
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(colors: [Color(0xFF00897B), Color(0xFF26A69A)]),
                     borderRadius: BorderRadius.circular(20),
-                    boxShadow: [BoxShadow(color: const Color(0xFF00897B).withOpacity(0.4), blurRadius: 12, offset: const Offset(0, 4))],
+                    boxShadow: [BoxShadow(color: const Color(0xFF00897B).withValues(alpha: 0.4), blurRadius: 12, offset: const Offset(0, 4))],
                   ),
                   child: Material(
                     color: Colors.transparent,
@@ -3107,7 +3107,7 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> with TickerProv
       dropoffLocation: dropoffLocation,
       routePolyline: displayPolyline,
       waitingRiderLocations: [
-        if (sharedStop != null) sharedStop,
+        ...sharedStop != null ? [sharedStop] : <LatLng>[],
         ...mockRiders,
       ],
       nearbyDrivers: mockDrivers,

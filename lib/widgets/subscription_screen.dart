@@ -98,7 +98,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
           final roleRes = await _client
               .from('user_profiles')
               .select('role')
-              .eq('user_id', userId!)
+              .eq('user_id', userId)
               .maybeSingle();
           userRole = roleRes?['role'] as String?;
 

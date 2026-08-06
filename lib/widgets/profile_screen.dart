@@ -565,7 +565,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                   ),
                                   const SizedBox(height: 6),
                                   if (_remainingForDiscount < 5)
-                                    Text('بقي ${_remainingForDiscount} راكبة لتحصلي على خصم 20%!', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                                    Text('بقي $_remainingForDiscount راكبة لتحصلي على خصم 20%!', style: const TextStyle(color: Colors.white70, fontSize: 11)),
                                 ],
                               ),
 
