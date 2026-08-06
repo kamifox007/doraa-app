@@ -27,6 +27,8 @@ import '../widgets/subscription_screen.dart';
 import '../widgets/support_screen.dart';
 import '../widgets/notifications_screen.dart';
 import '../features/legal/widgets/evidence_banner.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../widgets/driver_registration_screen.dart';
 
 class AnimatedWaitingRider extends StatefulWidget {
   const AnimatedWaitingRider({super.key});
@@ -255,7 +257,6 @@ class FreeMapPreview extends StatelessWidget {
                 points: routePolyline!,
                 color: const Color(0xFFE91E63),
                 strokeWidth: 4.0,
-                isDotted: true,
               ),
             ],
           ),
@@ -878,7 +879,6 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> with TickerProv
       child: GlassContainer(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         borderRadius: 20,
-        border: isActive ? Border.all(color: iconColor, width: 2) : Border.all(color: Colors.transparent),
         child: Row(
           children: [
             Icon(icon, color: iconColor),
@@ -2223,8 +2223,8 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> with TickerProv
               ),
             ),
           ),
-                  else
-                    Column(
+          if (isDriverMode)
+            Column(
                       children: [
                         Row(
                           children: [
