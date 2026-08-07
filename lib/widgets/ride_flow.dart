@@ -397,8 +397,8 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> with TickerProv
   bool isIntercity = false;
   String? _userRole;
   Timer? _mockCarsTimer;
-  List<MockVehicle> _mockVehicles = [];
-  List<MockRider> _mockRiders = [];
+  final List<MockVehicle> _mockVehicles = [];
+  final List<MockRider> _mockRiders = [];
   
   Timer? _simulationTimer;
   int _simulationIndex = 0;
