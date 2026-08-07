@@ -37,6 +37,21 @@ class AnimatedWaitingRider extends StatefulWidget {
   State<AnimatedWaitingRider> createState() => _AnimatedWaitingRiderState();
 }
 
+class MockVehicle {
+  LatLng position;
+  double heading;
+  double speed;
+  int remainingTicks;
+  MockVehicle(this.position, this.heading, this.speed, this.remainingTicks);
+}
+
+class MockRider {
+  LatLng position;
+  int remainingTicks;
+  MockRider(this.position, this.remainingTicks);
+}
+
+
 class _AnimatedWaitingRiderState extends State<AnimatedWaitingRider> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _bounceAnimation;
@@ -97,21 +112,26 @@ class _AnimatedWaitingRiderState extends State<AnimatedWaitingRider> with Single
             child: Transform.rotate(
               angle: _shakeAnimation.value,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  borderRadius: BorderRadius.circular(20),
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: _isAngry ? Colors.orange : const Color(0xFFE91E63), width: 2),
                   boxShadow: [
                     BoxShadow(
-                      color: _isAngry ? Colors.red.withValues(alpha: 0.5) : Colors.pink.withValues(alpha: 0.3),
+                      color: _isAngry ? Colors.orange.withValues(alpha: 0.4) : const Color(0xFFE91E63).withValues(alpha: 0.3),
                       blurRadius: _isAngry ? 15 : 10,
                       spreadRadius: _isAngry ? 4 : 2,
                     ),
                   ],
                 ),
-                child: Text(
-                  _isAngry ? '😤👜' : '🚶‍♀️👜', // فتاة غاضبة مقابل فتاة عادية بحقيبة
-                  style: const TextStyle(fontSize: 32),
+                child: ClipOval(
+                  child: Image.asset(
+                    _isAngry ? 'assets/images/impatient_girl.png' : 'assets/images/waiting_girl.png',
+                    width: 36,
+                    height: 36,
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ),
             ),
@@ -198,12 +218,21 @@ class FreeMapPreview extends StatelessWidget {
           height: 50,
           child: RepaintBoundary(
             child: Container(
+              padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: Colors.white,
+                gradient: const LinearGradient(colors: [Color(0xFF673AB7), Color(0xFFE91E63)]),
                 shape: BoxShape.circle,
-                boxShadow: [BoxShadow(color: Colors.pink.withValues(alpha: 0.5), blurRadius: 8)],
+                border: Border.all(color: Colors.white, width: 2.5),
+                boxShadow: [BoxShadow(color: const Color(0xFF673AB7).withValues(alpha: 0.5), blurRadius: 10, spreadRadius: 3)],
               ),
-              child: const Icon(Icons.directions_car_rounded, color: Colors.pink, size: 30),
+              child: ClipOval(
+                child: Image.asset(
+                  'assets/images/elegant_car.png',
+                  width: 30,
+                  height: 30,
+                  fit: BoxFit.cover,
+                ),
+              ),
             ),
           ),
         ),
@@ -219,12 +248,21 @@ class FreeMapPreview extends StatelessWidget {
           height: 44,
           child: RepaintBoundary(
             child: Container(
+              padding: const EdgeInsets.all(5),
               decoration: BoxDecoration(
                 color: Colors.white,
                 shape: BoxShape.circle,
-                boxShadow: [BoxShadow(color: Colors.pink.withValues(alpha: 0.3), blurRadius: 6)],
+                border: Border.all(color: const Color(0xFF9C27B0), width: 1.5),
+                boxShadow: [BoxShadow(color: const Color(0xFF9C27B0).withValues(alpha: 0.3), blurRadius: 6)],
               ),
-              child: const Icon(Icons.directions_car_rounded, color: Colors.pink, size: 24),
+              child: ClipOval(
+                child: Image.asset(
+                  'assets/images/elegant_car.png',
+                  width: 24,
+                  height: 24,
+                  fit: BoxFit.cover,
+                ),
+              ),
             ),
           ),
         ),
@@ -359,7 +397,30 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> with TickerProv
   bool isIntercity = false;
   String? _userRole;
   Timer? _mockCarsTimer;
-  double _mockCarsPhase = 0.0;
+  List<MockVehicle> _mockVehicles = [];
+  List<MockRider> _mockRiders = [];
+  
+  Timer? _simulationTimer;
+  int _simulationIndex = 0;
+
+  void _startTripSimulation() {
+    if (_routePolyline == null || _routePolyline!.isEmpty) return;
+    _simulationIndex = 0;
+    _simulationTimer?.cancel();
+    // تحريك سيارة الرحلة بدقة على مسار الطريق المرسوم
+    _simulationTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) {
+      if (!mounted || _step != RideFlowStep.activeRide) {
+        timer.cancel();
+        return;
+      }
+      if (_simulationIndex < _routePolyline!.length) {
+        setState(() => driverLocation = _routePolyline![_simulationIndex]);
+        _simulationIndex += 3; // تخطي بعض النقاط لتسريع حركة المحاكاة بشكل مناسب
+      } else {
+        timer.cancel();
+      }
+    });
+  }
 
   StreamSubscription<List<RideMessage>>? _messagesSubscription;
   StreamSubscription<Map<String, dynamic>?>? _locationSubscription;
@@ -382,10 +443,59 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> with TickerProv
     _searchingAnimController = AnimationController(vsync: this, duration: const Duration(seconds: 1))..repeat(reverse: true);
     _pulseAnimation = Tween<double>(begin: 0.8, end: 1.2).animate(CurvedAnimation(parent: _searchingAnimController!, curve: Curves.easeInOut));
     
-    _mockCarsTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
-      if (mounted && _step == RideFlowStep.home) {
-        setState(() => _mockCarsPhase += 0.02);
+    _mockCarsTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted || _step != RideFlowStep.home) return;
+      
+      final center = pickupLocation ?? const LatLng(36.7538, 3.0588);
+      final hour = DateTime.now().hour;
+      
+      // الكثافة تزيد في أوقات الذروة
+      bool isRushHour = (hour >= 7 && hour <= 10) || (hour >= 16 && hour <= 19);
+      int targetVehicles = isRushHour ? 6 : 3;
+      int targetRiders = isRushHour ? 4 : 2;
+      
+      final rand = math.Random();
+      
+      // تحديث السيارات
+      _mockVehicles.removeWhere((v) => v.remainingTicks <= 0);
+      for (var v in _mockVehicles) {
+        v.remainingTicks--;
+        double distance = v.speed;
+        v.position = LatLng(
+          v.position.latitude + distance * math.cos(v.heading),
+          v.position.longitude + distance * math.sin(v.heading)
+        );
       }
+      
+      // إضافة سيارات جديدة بعيداً عن المستخدم لمحاكاة نشاط حقيقي
+      while (_mockVehicles.length < targetVehicles) {
+        double angle = rand.nextDouble() * 2 * math.pi;
+        double dist = 0.005 + rand.nextDouble() * 0.015; // المسافة الأدنى 0.005 لمنع التكدس
+        LatLng startPos = LatLng(center.latitude + dist * math.cos(angle), center.longitude + dist * math.sin(angle));
+        
+        // اتجاه يحاكي شبكة الطرق (زوايا قائمة متعامدة)
+        double heading = (rand.nextInt(4) * 90) * (math.pi / 180);
+        double speed = 0.0001 + rand.nextDouble() * 0.00015; // حركة بطيئة جدا تحاكي السير الواقعي
+        int lifespan = 30 + rand.nextInt(60); // تختفي بعد 30 لـ 90 ثانية
+        
+        _mockVehicles.add(MockVehicle(startPos, heading, speed, lifespan));
+      }
+      
+      // تحديث الراكبات
+      _mockRiders.removeWhere((r) => r.remainingTicks <= 0);
+      for (var r in _mockRiders) {
+        r.remainingTicks--;
+      }
+      
+      while (_mockRiders.length < targetRiders) {
+        double angle = rand.nextDouble() * 2 * math.pi;
+        double dist = 0.004 + rand.nextDouble() * 0.01;
+        LatLng pos = LatLng(center.latitude + dist * math.cos(angle), center.longitude + dist * math.sin(angle));
+        int lifespan = 20 + rand.nextInt(40);
+        _mockRiders.add(MockRider(pos, lifespan));
+      }
+      
+      setState(() {});
     });
     driverOffers = const [
       RideOffer(id: 'd1', name: 'سارة', rating: 4.9, carInfo: 'تويوتا كورولا', distanceKm: 2.1, etaMinutes: 4),
@@ -447,6 +557,7 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> with TickerProv
     _audioRecorder.dispose();
     _audioPlayer.dispose();
     _mockCarsTimer?.cancel();
+    _simulationTimer?.cancel();
     _debounceTimer?.cancel();
     _searchingAnimController?.dispose();
     _autoOfflineTimer?.cancel();
@@ -3068,35 +3179,8 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> with TickerProv
       
       // لا نظهر الوهميات للسائقة إلا إذا كانت في وضع العمل أو كانت مستخدمة عادية
       if (_userRole != 'driver' || isWorkingDriver) {
-        mockDrivers = [
-          // متوقفة
-          LatLng(location.latitude + 0.002, location.longitude + 0.003),
-          LatLng(location.latitude - 0.003, location.longitude + 0.001),
-          // تتحرك في دوائر صغيرة
-          LatLng(
-              location.latitude + 0.004 + math.sin(_mockCarsPhase) * 0.001,
-              location.longitude - 0.004 + math.cos(_mockCarsPhase) * 0.001),
-          LatLng(
-              location.latitude - 0.001 + math.cos(_mockCarsPhase * 0.8) * 0.0015,
-              location.longitude - 0.005 + math.sin(_mockCarsPhase * 0.8) * 0.0015),
-        ];
-
-        // إضافة 5 راكبات وهميات يظهرن ويختفين في أماكن متفرقة بشكل مستقل
-        mockRiders = List.generate(5, (index) {
-          // كل راكبة لها توقيت (Phase) مختلف لكي لا يختفين ويظهرن في نفس اللحظة
-          final int avatarPhase = (_mockCarsPhase * (0.2 + (index * 0.05))).floor();
-          final math.Random rand = math.Random(avatarPhase + index * 100);
-          
-          // نوزعهم على مسافات مرئية حول السائقة (بين 0.004 و 0.015 درجة)
-          double dx = (rand.nextDouble() * 0.02 - 0.01);
-          double dy = (rand.nextDouble() * 0.02 - 0.01);
-          
-          // ضمان ابتعادهم بمسافة لا تقل عن حد معين حتى لا يتكدسوا فوق السائقة
-          if (dx.abs() < 0.004) dx += dx >= 0 ? 0.004 : -0.004;
-          if (dy.abs() < 0.004) dy += dy >= 0 ? 0.004 : -0.004;
-          
-          return LatLng(location.latitude + dx, location.longitude + dy);
-        });
+        mockDrivers = _mockVehicles.map((v) => v.position).toList();
+        mockRiders = _mockRiders.map((r) => r.position).toList();
       }
     }
 
@@ -3274,6 +3358,7 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> with TickerProv
         status = 'accepted';
         negotiationHistory.add('تم قبول العرض');
         _step = RideFlowStep.activeRide;
+        _startTripSimulation(); // تفعيل محاكاة سير السيارة على طريق الخريطة
         if (currentRideId != null) {
           if (isDriverMode) {
             _trackingService.startTracking(
