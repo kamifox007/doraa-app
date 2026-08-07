@@ -61,6 +61,7 @@ dependencies:
   crypto: any
   hive_flutter: any
   shimmer: any
+  app_links: ^7.0.0
 
 dev_dependencies:
   flutter_test:

@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart'; // For kIsWeb
+import 'package:app_links/app_links.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'services/app_config.dart';
 import 'services/stitch_service.dart';
@@ -45,12 +47,42 @@ Future<void> _initializeApp() async {
     await SupabaseService.initialize();
     await Hive.initFlutter();
     
+    // إعداد قراءة الروابط العميقة (Deep Links) لتحديد الولاية
+    try {
+      final appLinks = AppLinks();
+      
+      // قراءة الرابط إذا كان التطبيق مغلقاً وفتح عبر الرابط
+      final initialUri = await appLinks.getInitialAppLink();
+      if (initialUri != null) {
+        _handleDeepLink(initialUri);
+      }
+      
+      // قراءة الروابط إذا كان التطبيق مفتوحاً في الخلفية
+      appLinks.uriLinkStream.listen((uri) {
+        _handleDeepLink(uri);
+      });
+    } catch (e) {
+      debugPrint("AppLinks Error: $e");
+    }
+    
     if (!kIsWeb) {
       await PushNotificationService().initialize();
       await NotificationService().init();
     }
   } catch (e) {
     debugPrint("Initialization Error: $e");
+  }
+}
+
+void _handleDeepLink(Uri uri) async {
+  // فحص إذا كان الرابط يحتوي على معامل ?wilaya=
+  if (uri.queryParameters.containsKey('wilaya')) {
+    final wilaya = uri.queryParameters['wilaya'];
+    if (wilaya != null && wilaya.isNotEmpty) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('referral_wilaya', wilaya);
+      debugPrint("تم تسجيل الولاية من الرابط: $wilaya");
+    }
   }
 }
 
@@ -207,6 +239,10 @@ class _HomePageState extends ConsumerState<HomePage> with SingleTickerProviderSt
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  String? _referralWilaya;
+
   @override
   void initState() {
     super.initState();
@@ -214,6 +250,14 @@ class _HomePageState extends ConsumerState<HomePage> with SingleTickerProviderSt
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeIn));
     _animationController.forward();
     _loadStatuses();
+    _loadReferralWilaya();
+  }
+
+  Future<void> _loadReferralWilaya() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _referralWilaya = prefs.getString('referral_wilaya');
+    });
   }
 
   @override
@@ -321,7 +365,7 @@ class _HomePageState extends ConsumerState<HomePage> with SingleTickerProviderSt
                               ),
                               const SizedBox(height: 32),
                               Text(
-                                tr('app_name'),
+                                _referralWilaya != null ? 'Dora ${_referralWilaya![0].toUpperCase()}${_referralWilaya!.substring(1)}' : tr('app_name'),
                                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                                       fontWeight: FontWeight.bold,
                                       color: const Color(0xFFE91E63),
