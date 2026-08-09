@@ -74,7 +74,37 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
+
+  Future<void> signUpWithPhonePassword({required String phone, required String password}) async {
+    state = state.copyWith(status: AuthStatus.loading, message: 'جاري إنشاء الحساب...');
+    try {
+      final res = await _authService.signUpWithPhonePassword(phone: phone, password: password);
+      if (res.user != null) {
+        state = state.copyWith(status: AuthStatus.authenticated, isAuthenticated: true, userId: res.user?.id);
+      } else {
+        state = state.copyWith(status: AuthStatus.error, message: 'تعذر إنشاء الحساب');
+      }
+    } catch (e) {
+      state = state.copyWith(status: AuthStatus.error, message: e.toString());
+    }
+  }
+
+  Future<void> signInWithPhonePassword({required String phone, required String password}) async {
+    state = state.copyWith(status: AuthStatus.loading, message: 'جاري تسجيل الدخول...');
+    try {
+      final res = await _authService.signInWithPhonePassword(phone: phone, password: password);
+      if (res.user != null) {
+        state = state.copyWith(status: AuthStatus.authenticated, isAuthenticated: true, userId: res.user?.id);
+      } else {
+        state = state.copyWith(status: AuthStatus.error, message: 'بيانات الدخول غير صحيحة');
+      }
+    } catch (e) {
+      state = state.copyWith(status: AuthStatus.error, message: e.toString());
+    }
+  }
+
   Future<void> completeRegistration(RegistrationState registration) async {
+
     state = state.copyWith(status: AuthStatus.loading, message: 'جاري حفظ الملف الشخصي...');
     try {
       final userId = state.userId ?? _authService.currentUser?.id;

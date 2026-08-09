@@ -28,6 +28,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
   List<Map<String, dynamic>> _promoCodes = [];
   List<Map<String, dynamic>> _lostItems = [];
   List<Map<String, dynamic>> _disputes = [];
+  List<Map<String, dynamic>> _financialTransactions = [];
 
   bool _isLoadingDrivers = true;
   bool _isLoadingReports = true;
@@ -38,6 +39,10 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
   bool _isLoadingPromo = true;
   bool _isLoadingLost = true;
   bool _isLoadingDisputes = true;
+  bool _isLoadingFinancials = true;
+
+  double _totalTopups = 0;
+  double _totalCommissions = 0;
 
   // Push Notification
   final _notifTitleCtrl = TextEditingController();
@@ -47,7 +52,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 9, vsync: this);
+    _tabController = TabController(length: 10, vsync: this);
     _tabController.addListener(() {
       switch (_tabController.index) {
         case 0: _fetchPendingDrivers(); break;
@@ -59,6 +64,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
         case 6: _fetchPromoCodes(); break;
         case 7: _fetchLostItems(); break;
         case 8: _fetchDisputes(); break;
+        case 9: _fetchFinancials(); break;
       }
     });
     _fetchPendingDrivers();
@@ -159,6 +165,29 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
       final r = await _client.from('disputes').select('*, ride:ride_id(pickup_address, dropoff_address)').order('created_at', ascending: false);
       if (mounted) setState(() { _disputes = List<Map<String, dynamic>>.from(r); _isLoadingDisputes = false; });
     } catch (_) { if (mounted) setState(() => _isLoadingDisputes = false); }
+  }
+
+  Future<void> _fetchFinancials() async {
+    setState(() => _isLoadingFinancials = true);
+    try {
+      final r = await _client.from('wallet_transactions').select('*, user:user_id(full_name, phone)').order('created_at', ascending: false).limit(100);
+      double topups = 0;
+      double commissions = 0;
+      for (var txn in r) {
+        if (txn['type'] == 'topup') topups += (txn['amount'] as num).toDouble();
+        if (txn['type'] == 'commission') commissions += (txn['amount'] as num).toDouble().abs();
+      }
+      if (mounted) {
+        setState(() {
+          _financialTransactions = List<Map<String, dynamic>>.from(r);
+          _totalTopups = topups;
+          _totalCommissions = commissions;
+          _isLoadingFinancials = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingFinancials = false);
+    }
   }
 
   // ══════════════════════════════════════
@@ -282,7 +311,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
   Widget build(BuildContext context) {
     final tr = ref.watch(translationProvider).tr;
     return DefaultTabController(
-      length: 9,
+      length: 10,
       child: Scaffold(
         appBar: AppBar(
           title: Text(tr('admin_dashboard_title'), style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -299,6 +328,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
               if (_tabController.index == 6) _fetchPromoCodes();
               if (_tabController.index == 7) _fetchLostItems();
               if (_tabController.index == 8) _fetchDisputes();
+              if (_tabController.index == 9) _fetchFinancials();
             }),
           ],
           bottom: TabBar(
@@ -317,6 +347,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
               Tab(icon: const Icon(Icons.local_offer, size: 18), text: tr('discounts_tab')),
               Tab(icon: const Icon(Icons.find_in_page, size: 18), text: tr('lost_items_tab')),
               Tab(icon: const Icon(Icons.gavel, size: 18), text: tr('disputes_tab')),
+              Tab(icon: const Icon(Icons.account_balance_wallet, size: 18), text: 'الماليات'),
             ],
           ),
         ),
@@ -334,6 +365,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
               _buildPromoCodesTab(),
               _buildLostItemsTab(),
               _buildDisputesTab(),
+              _buildFinancialsTab(),
             ],
           ),
         ),
@@ -482,6 +514,95 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
           }
         );
       },
+    );
+  }
+
+  // ══════════════════════════════════════
+  // Tab: الماليات
+  // ══════════════════════════════════════
+  Widget _buildFinancialsTab() {
+    if (_isLoadingFinancials) {
+      _fetchFinancials();
+      return const Center(child: CircularProgressIndicator());
+    }
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(12)),
+                  child: Column(
+                    children: [
+                      const Icon(Icons.account_balance_wallet, color: Colors.green, size: 32),
+                      const SizedBox(height: 8),
+                      const Text('إجمالي الشحن (التسبيق)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green), textAlign: TextAlign.center),
+                      Text('${_totalTopups.toStringAsFixed(0)} دج', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.green)),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(12)),
+                  child: Column(
+                    children: [
+                      const Icon(Icons.monetization_on, color: Colors.blue, size: 32),
+                      const SizedBox(height: 8),
+                      const Text('إجمالي العمولات المقتطعة', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue), textAlign: TextAlign.center),
+                      Text('${_totalCommissions.toStringAsFixed(0)} دج', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blue)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const Divider(),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Align(alignment: Alignment.centerRight, child: Text('آخر العمليات المالية', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
+        ),
+        Expanded(
+          child: _financialTransactions.isEmpty
+              ? const Center(child: Text('لا توجد عمليات مالية حالياً'))
+              : ListView.builder(
+                  itemCount: _financialTransactions.length,
+                  itemBuilder: (ctx, i) {
+                    final t = _financialTransactions[i];
+                    final user = t['user'] ?? {};
+                    final type = t['type'] ?? '';
+                    final amount = (t['amount'] as num?)?.toDouble() ?? 0;
+                    
+                    IconData icon;
+                    Color color;
+                    String title;
+                    
+                    if (type == 'topup') {
+                      icon = Icons.add_circle; color = Colors.green; title = 'شحن محفظة';
+                    } else if (type == 'commission') {
+                      icon = Icons.remove_circle; color = Colors.blue; title = 'اقتطاع عمولة';
+                    } else if (type == 'referral_bonus') {
+                      icon = Icons.card_giftcard; color = Colors.purple; title = 'مكافأة إحالة';
+                    } else {
+                      icon = Icons.swap_horiz; color = Colors.grey; title = type;
+                    }
+                    
+                    return ListTile(
+                      leading: CircleAvatar(backgroundColor: color.withValues(alpha: 0.2), child: Icon(icon, color: color)),
+                      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Text('${user['full_name'] ?? 'مجهول'} • ${t['description'] ?? ''}'),
+                      trailing: Text('${amount > 0 ? '+' : ''}${amount.toStringAsFixed(0)} دج', style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16)),
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 

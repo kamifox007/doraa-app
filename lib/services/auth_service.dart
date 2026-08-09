@@ -44,7 +44,25 @@ class AuthService {
     return client.auth.signInWithPassword(email: email, password: password);
   }
 
+
+  Future<AuthResponse> signUpWithPhonePassword({
+    required String phone,
+    required String password,
+  }) async {
+    _requireConfigured();
+    return client.auth.signUp(phone: phone, password: password);
+  }
+
+  Future<AuthResponse> signInWithPhonePassword({
+    required String phone,
+    required String password,
+  }) async {
+    _requireConfigured();
+    return client.auth.signInWithPassword(phone: phone, password: password);
+  }
+
   Future<void> saveUserProfile({
+
     required String userId,
     required Map<String, dynamic> data,
   }) async {

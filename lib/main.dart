@@ -52,7 +52,7 @@ Future<void> _initializeApp() async {
       final appLinks = AppLinks();
       
       // قراءة الرابط إذا كان التطبيق مغلقاً وفتح عبر الرابط
-      final initialUri = await appLinks.getInitialAppLink();
+      final initialUri = await appLinks.getInitialLink();
       if (initialUri != null) {
         _handleDeepLink(initialUri);
       }
@@ -236,9 +236,6 @@ class _HomePageState extends ConsumerState<HomePage> with SingleTickerProviderSt
   String supabaseStatus = 'جاري الفحص...';
   String stitchStatus = 'جاري الفحص...';
   bool isLoading = true;
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
-
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   String? _referralWilaya;

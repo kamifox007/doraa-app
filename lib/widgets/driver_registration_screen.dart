@@ -21,6 +21,7 @@ class _DriverRegistrationScreenState extends ConsumerState<DriverRegistrationScr
   bool _isSuccess = false;
 
   // Car Details
+  String _wilaya = '';
   String _carBrand = '';
   String _carModel = '';
   String _carYear = '';
@@ -59,6 +60,7 @@ class _DriverRegistrationScreenState extends ConsumerState<DriverRegistrationScr
   Future<void> _loadDraft() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
+      _wilaya = prefs.getString('draft_wilaya') ?? '';
       _carBrand = prefs.getString('draft_carBrand') ?? '';
       _carModel = prefs.getString('draft_carModel') ?? '';
       _carYear = prefs.getString('draft_carYear') ?? '';
@@ -75,6 +77,7 @@ class _DriverRegistrationScreenState extends ConsumerState<DriverRegistrationScr
 
   Future<void> _saveDraft() async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('draft_wilaya', _wilaya);
     await prefs.setString('draft_carBrand', _carBrand);
     await prefs.setString('draft_carModel', _carModel);
     await prefs.setString('draft_carYear', _carYear);
@@ -102,7 +105,7 @@ class _DriverRegistrationScreenState extends ConsumerState<DriverRegistrationScr
 
   Future<void> _submitApplication() async {
     final tr = ref.read(translationProvider).tr;
-    if (_carBrand.isEmpty || _carModel.isEmpty || _carPlate.isEmpty) {
+    if (_wilaya.isEmpty || _carBrand.isEmpty || _carModel.isEmpty || _carPlate.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(tr('please_fill_car_details'))),
       );
@@ -130,7 +133,8 @@ class _DriverRegistrationScreenState extends ConsumerState<DriverRegistrationScr
         });
 
         await Supabase.instance.client.from('user_profiles').update({
-          'role': 'pending_driver'
+          'role': 'pending_driver',
+          'wilaya': _wilaya,
         }).eq('user_id', user.id);
 
         final authService = AuthService();
@@ -149,6 +153,7 @@ class _DriverRegistrationScreenState extends ConsumerState<DriverRegistrationScr
 
         // Clear draft on success
         final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('draft_wilaya');
         await prefs.remove('draft_carBrand');
         await prefs.remove('draft_carModel');
         await prefs.remove('draft_carYear');
@@ -174,7 +179,7 @@ class _DriverRegistrationScreenState extends ConsumerState<DriverRegistrationScr
   void _nextPage() {
     if (_currentPage == 0) {
       // Basic validation before swiping
-      if (_carBrand.isEmpty || _carModel.isEmpty || _carPlate.isEmpty) {
+      if (_wilaya.isEmpty || _carBrand.isEmpty || _carModel.isEmpty || _carPlate.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('يرجى تعبئة الحقول الأساسية للسيارة أولاً')));
         return;
       }
@@ -262,7 +267,15 @@ class _DriverRegistrationScreenState extends ConsumerState<DriverRegistrationScr
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('معلومات السيارة', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF333333))),
+          
+          const Text('نطاق العمل', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF333333))),
+          const SizedBox(height: 12),
+          _buildWilayaDropdown(),
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 24),
+          const Text('معلومات السيارة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF333333))),
+
           const SizedBox(height: 8),
           Text('يرجى إدخال تفاصيل سيارتك بدقة كما هي مسجلة في البطاقة الرمادية.', style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
           const SizedBox(height: 24),
@@ -396,7 +409,49 @@ class _DriverRegistrationScreenState extends ConsumerState<DriverRegistrationScr
     );
   }
 
-  Widget _buildImagePickerRow({required String title, required IconData icon, required String? path, required VoidCallback onPick}) {
+
+  Widget _buildWilayaDropdown() {
+    final wilayas = [
+      '1 - أدرار', '2 - الشلف', '3 - الأغواط', '4 - أم البواقي', '5 - باتنة', '6 - بجاية', '7 - بسكرة', '8 - بشار', '9 - البليدة', '10 - البويرة',
+      '11 - تمنراست', '12 - تبسة', '13 - تلمسان', '14 - تيارت', '15 - تيزي وزو', '16 - الجزائر', '17 - الجلفة', '18 - جيجل', '19 - سطيف', '20 - سعيدة',
+      '21 - سكيكدة', '22 - سيدي بلعباس', '23 - عنابة', '24 - قالمة', '25 - قسنطينة', '26 - المدية', '27 - مستغانم', '28 - المسيلة', '29 - معسكر', '30 - ورقلة',
+      '31 - وهران', '32 - البيض', '33 - إليزي', '34 - برج بوعريريج', '35 - بومرداس', '36 - الطارف', '37 - تندوف', '38 - تسمسيلت', '39 - الوادي', '40 - خنشلة',
+      '41 - سوق أهراس', '42 - تيبازة', '43 - ميلة', '44 - عين الدفلى', '45 - النعامة', '46 - عين تموشنت', '47 - غرداية', '48 - غليزان', '49 - تيميمون', '50 - برج باجي مختار',
+      '51 - أولاد جلال', '52 - بني عباس', '53 - إن صالح', '54 - إن قزام', '55 - تقرت', '56 - جانت', '57 - المغير', '58 - المنيعة'
+    ];
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _wilaya.isEmpty ? Colors.grey.shade300 : const Color(0xFFE91E63), width: 1.5),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _wilaya.isEmpty ? null : _wilaya,
+          hint: const Text('اختاري ولاية العمل...', style: TextStyle(color: Colors.grey)),
+          isExpanded: true,
+          icon: const Icon(Icons.location_on, color: Color(0xFFE91E63)),
+          items: wilayas.map((String value) {
+            return DropdownMenuItem<String>(
+              value: value,
+              child: Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+            );
+          }).toList(),
+          onChanged: (newValue) {
+            setState(() {
+              _wilaya = newValue!;
+            });
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImagePickerRow
+({required String title, required IconData icon, required String? path, required VoidCallback onPick}) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(

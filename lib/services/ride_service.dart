@@ -555,6 +555,55 @@ class RideService {
     return false;
   }
 
+  /// 🌟 خوارزمية التطابق الجغرافي للرحلات التشاركية (Shared Rides Matching)
+  /// تتحقق رياضياً في الخلفية (Backend Algorithm Mock) ما إذا كانت الوجهتان في طريق متقارب
+  /// تعتمد على حساب نسبة الانحراف (Detour Ratio) لضمان عدم إزعاج السائقة أو الراكبة الأولى.
+  static bool checkSharedRideMatch({
+    required double r1PickupLat, required double r1PickupLng,
+    required double r1DropoffLat, required double r1DropoffLng,
+    required double r2PickupLat, required double r2PickupLng,
+    required double r2DropoffLat, required double r2DropoffLng,
+    double maxDetourRatio = 1.25, // أقصى انحراف مسموح به هو 25% زيادة عن مسار الرحلة الأولى
+    double maxPickupDistanceMeters = 2000.0, // يجب أن تكون الراكبة الثانية في دائرة 2 كم من نقطة الركوب
+  }) {
+    // 1. المسافة الأصلية للراكبة الأولى (الخط المباشر)
+    final originalDistance = Geolocator.distanceBetween(
+      r1PickupLat, r1PickupLng,
+      r1DropoffLat, r1DropoffLng,
+    );
+
+    // 2. المسافة بين نقطتي الركوب
+    final pickupDistance = Geolocator.distanceBetween(
+      r1PickupLat, r1PickupLng,
+      r2PickupLat, r2PickupLng,
+    );
+
+    // نرفض الدمج فوراً إذا كانت الراكبة الثانية بعيدة جداً عن نقطة الانطلاق
+    if (pickupDistance > maxPickupDistanceMeters) return false;
+
+    // 3. حساب مسار الرحلة المشتركة المقترح:
+    // المسار: (ركوب 1) -> (ركوب 2) -> (نزول 2) -> (نزول 1)
+    final d1 = pickupDistance;
+    final d2 = Geolocator.distanceBetween(
+      r2PickupLat, r2PickupLng,
+      r2DropoffLat, r2DropoffLng,
+    );
+    final d3 = Geolocator.distanceBetween(
+      r2DropoffLat, r2DropoffLng,
+      r1DropoffLat, r1DropoffLng,
+    );
+
+    final sharedDistance = d1 + d2 + d3;
+
+    // 4. تقييم الانحراف
+    // إذا كانت المسافة الإجمالية الجديدة لا تتعدى المسافة الأصلية بـ 25%، فالطريق متقارب ومثالي!
+    if (originalDistance > 0 && (sharedDistance / originalDistance) <= maxDetourRatio) {
+      return true; // التطابق ناجح
+    }
+
+    return false; // التطابق فاشل، الوجهات متعاكسة أو تسبب انحرافاً كبيراً
+  }
+
 
   Future<List<RideOffer>> nearbyDrivers() async {
     return const [
