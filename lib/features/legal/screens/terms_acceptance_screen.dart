@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../widgets/ride_flow.dart';
-import '../../../widgets/auth_flow.dart';
+import 'package:doraa/features/ride/presentation/screens/ride_flow.dart';
+import 'package:doraa/features/auth/presentation/screens/auth_flow.dart';
 import '../../../services/translation_service.dart';
 import '../../../services/app_config.dart';
 
@@ -143,9 +143,10 @@ class _TermsAcceptanceScreenState extends ConsumerState<TermsAcceptanceScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('حدث خطأ: $e')),
+          SnackBar(content: Text('Ø­Ø¯Ø« Ø®Ø·Ø£: $e')),
         );
       }
     }
   }
 }
+

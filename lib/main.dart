@@ -13,28 +13,40 @@ import 'services/supabase_service.dart';
 import 'services/notification_service.dart';
 import 'services/push_notification_service.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'widgets/auth_flow.dart';
-import 'widgets/glass_container.dart';
+import 'package:doraa/features/auth/presentation/screens/auth_flow.dart';
+import 'package:doraa/core/widgets/glass_container.dart';
 import 'providers/locale_provider.dart';
 import 'services/translation_service.dart';
 import 'core/security/root_detection.dart';
+import 'services/diagnostics_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   
+  // إعداد نظام التشخيص للأخطاء (Diagnostics)
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    DiagnosticsService.reportError(details.exception, details.stack ?? StackTrace.empty, isFlutterError: true);
+  };
+  
+  PlatformDispatcher.instance.onError = (error, stack) {
+    DiagnosticsService.reportError(error, stack);
+    return true;
+  };
+  
   // 1. اعرض Splash فوراً
   runApp(const SplashApp());
 
-  // 2. Initialize في الخلفية
+  // 2. Initialize Ù ÙŠ Ø§Ù„Ø®Ù„Ù ÙŠØ©
   _initializeApp().then((_) async {
-    // 3. فحص الأمان
+    // 3. Ù Ø­Øµ Ø§Ù„Ø£Ù…Ø§Ù†
     final isSecure = await SecurityCheck.isDeviceSecure();
     if (!isSecure) {
       runApp(const SecurityBlockApp());
       return;
     }
     
-    // 4. تشغيل التطبيق الفعلي
+    // 4. ØªØ´ØºÙŠÙ„ Ø§Ù„ØªØ·Ø¨ÙŠÙ‚ Ø§Ù„ÙØ¹Ù„ÙŠ
     runApp(const ProviderScope(child: MyApp()));
   });
 }
@@ -47,17 +59,17 @@ Future<void> _initializeApp() async {
     await SupabaseService.initialize();
     await Hive.initFlutter();
     
-    // إعداد قراءة الروابط العميقة (Deep Links) لتحديد الولاية
+    // Ø¥Ø¹Ø¯Ø§Ø¯ Ù‚Ø±Ø§Ø¡Ø© Ø§Ù„Ø±ÙˆØ§Ø¨Ø· Ø§Ù„Ø¹Ù…ÙŠÙ‚Ø© (Deep Links) Ù„ØªØ­Ø¯ÙŠØ¯ Ø§Ù„ÙˆÙ„Ø§ÙŠØ©
     try {
       final appLinks = AppLinks();
       
-      // قراءة الرابط إذا كان التطبيق مغلقاً وفتح عبر الرابط
+      // Ù‚Ø±Ø§Ø¡Ø© Ø§Ù„Ø±Ø§Ø¨Ø· Ø¥Ø°Ø§ ÙƒØ§Ù† Ø§Ù„ØªØ·Ø¨ÙŠÙ‚ Ù…ØºÙ„Ù‚Ø§Ù‹ ÙˆÙØªØ­ Ø¹Ø¨Ø± Ø§Ù„Ø±Ø§Ø¨Ø·
       final initialUri = await appLinks.getInitialLink();
       if (initialUri != null) {
         _handleDeepLink(initialUri);
       }
       
-      // قراءة الروابط إذا كان التطبيق مفتوحاً في الخلفية
+      // Ù‚Ø±Ø§Ø¡Ø© Ø§Ù„Ø±ÙˆØ§Ø¨Ø· Ø¥Ø°Ø§ ÙƒØ§Ù† Ø§Ù„ØªØ·Ø¨ÙŠÙ‚ Ù…ÙØªÙˆØ­Ø§Ù‹ ÙÙŠ Ø§Ù„Ø®Ù„ÙÙŠØ©
       appLinks.uriLinkStream.listen((uri) {
         _handleDeepLink(uri);
       });
@@ -75,13 +87,13 @@ Future<void> _initializeApp() async {
 }
 
 void _handleDeepLink(Uri uri) async {
-  // فحص إذا كان الرابط يحتوي على معامل ?wilaya=
+  // ÙØ­Øµ Ø¥Ø°Ø§ ÙƒØ§Ù† Ø§Ù„Ø±Ø§Ø¨Ø· ÙŠØ­ØªÙˆÙŠ Ø¹Ù„Ù‰ Ù…Ø¹Ø§Ù…Ù„ ?wilaya=
   if (uri.queryParameters.containsKey('wilaya')) {
     final wilaya = uri.queryParameters['wilaya'];
     if (wilaya != null && wilaya.isNotEmpty) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('referral_wilaya', wilaya);
-      debugPrint("تم تسجيل الولاية من الرابط: $wilaya");
+      debugPrint("ØªÙ… ØªØ³Ø¬ÙŠÙ„ Ø§Ù„ÙˆÙ„Ø§ÙŠØ© Ù…Ù† Ø§Ù„Ø±Ø§Ø¨Ø·: $wilaya");
     }
   }
 }
@@ -126,7 +138,7 @@ class SecurityBlockApp extends StatelessWidget {
               const Icon(Icons.gpp_bad_rounded, size: 80, color: Colors.red),
               const SizedBox(height: 16),
               const Text(
-                'جهاز غير آمن / Unsafe Device',
+                'Ø¬Ù‡Ø§Ø² ØºÙŠØ± Ø¢Ù…Ù† / Unsafe Device',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.red),
                 textAlign: TextAlign.center,
               ),
@@ -134,7 +146,7 @@ class SecurityBlockApp extends StatelessWidget {
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 32.0),
                 child: Text(
-                  'تم اكتشاف تعديل على النظام (Root/Jailbreak). لا يمكن استخدام التطبيق لأسباب أمنية.\n\nSystem modification (Root/Jailbreak) detected. App cannot be used for security reasons.',
+                  'ØªÙ… Ø§ÙƒØªØ´Ø§Ù ØªØ¹Ø¯ÙŠÙ„ Ø¹Ù„Ù‰ Ø§Ù„Ù†Ø¸Ø§Ù… (Root/Jailbreak). Ù„Ø§ ÙŠÙ…ÙƒÙ† Ø§Ø³ØªØ®Ø¯Ø§Ù… Ø§Ù„ØªØ·Ø¨ÙŠÙ‚ Ù„Ø£Ø³Ø¨Ø§Ø¨ Ø£Ù…Ù†ÙŠØ©.\n\nSystem modification (Root/Jailbreak) detected. App cannot be used for security reasons.',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 14),
                 ),
@@ -143,7 +155,7 @@ class SecurityBlockApp extends StatelessWidget {
               ElevatedButton(
                 onPressed: () => SystemNavigator.pop(),
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                child: const Text('خروج / Exit'),
+                child: const Text('Ø®Ø±ÙˆØ¬ / Exit'),
               ),
             ],
           ),
@@ -164,6 +176,7 @@ class MyApp extends ConsumerWidget {
     return MaterialApp(
       title: 'Doraa App',
       debugShowCheckedModeBanner: false,
+      navigatorKey: DiagnosticsService.navigatorKey,
       locale: Locale(localeString),
       supportedLocales: const [Locale('ar'), Locale('fr'), Locale('en')],
       builder: (context, child) {
@@ -233,8 +246,8 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> with SingleTickerProviderStateMixin {
-  String supabaseStatus = 'جاري الفحص...';
-  String stitchStatus = 'جاري الفحص...';
+  String supabaseStatus = 'Ø¬Ø§Ø±ÙŠ Ø§Ù„ÙØ­Øµ...';
+  String stitchStatus = 'Ø¬Ø§Ø±ÙŠ Ø§Ù„ÙØ­Øµ...';
   bool isLoading = true;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -269,17 +282,17 @@ class _HomePageState extends ConsumerState<HomePage> with SingleTickerProviderSt
 
     setState(() {
       if (supabaseResult == null) {
-        supabaseStatus = 'Supabase غير مُهيأ بعد';
+        supabaseStatus = 'Supabase ØºÙŠØ± Ù…ÙÙ‡ÙŠØ£ Ø¨Ø¹Ø¯';
       } else if (supabaseResult['status'] == 'ok') {
-        supabaseStatus = 'متصل بـ Supabase';
+        supabaseStatus = 'Ù…ØªØµÙ„ Ø¨Ù€ Supabase';
       } else {
-        supabaseStatus = 'خطأ: ${supabaseResult['message']}';
+        supabaseStatus = 'Ø®Ø·Ø£: ${supabaseResult['message']}';
       }
 
       if (stitchResult['status'] == 'ok') {
-        stitchStatus = 'جاهز لـ Stitch';
+        stitchStatus = 'Ø¬Ø§Ù‡Ø² Ù„Ù€ Stitch';
       } else {
-        stitchStatus = 'Stitch غير مُهيأ بعد';
+        stitchStatus = 'Stitch ØºÙŠØ± Ù…ÙÙ‡ÙŠØ£ Ø¨Ø¹Ø¯';
       }
 
       isLoading = false;
@@ -316,8 +329,8 @@ class _HomePageState extends ConsumerState<HomePage> with SingleTickerProviderSt
                       value: ref.watch(localeProvider),
                       underline: const SizedBox(),
                       items: const [
-                        DropdownMenuItem(value: 'ar', child: Text('العربية')),
-                        DropdownMenuItem(value: 'fr', child: Text('Français')),
+                        DropdownMenuItem(value: 'ar', child: Text('Ø§Ù„Ø¹Ø±Ø¨ÙŠØ©')),
+                        DropdownMenuItem(value: 'fr', child: Text('FranÃ§ais')),
                         DropdownMenuItem(value: 'en', child: Text('English')),
                       ],
                       onChanged: (val) {
@@ -464,3 +477,4 @@ class _HomePageState extends ConsumerState<HomePage> with SingleTickerProviderSt
     );
   }
 }
+

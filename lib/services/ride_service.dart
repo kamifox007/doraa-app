@@ -669,11 +669,23 @@ class RideService {
             final status = newRecord['status'];
             final oldStatus = payload.oldRecord['status'];
             if (status == 'accepted' && oldStatus != 'accepted') {
+              const title = 'تم قبول رحلتك! ✅';
+              const body = 'السائقة في طريقها إليك الآن';
+              
               NotificationService().showNotification(
                 id: newRecord['id'].hashCode,
-                title: 'تم قبول رحلتك! ✅',
-                body: 'السائقة في طريقها إليك الآن',
+                title: title,
+                body: body,
               );
+              
+              // Save to permanent DB
+              client.from('notifications').insert({
+                'user_id': userId,
+                'title': title,
+                'body': body,
+                'type': 'RIDE_UPDATE',
+                'is_read': false,
+              });
             }
           }
         }
