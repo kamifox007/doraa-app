@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:doraa/models/auth_models.dart';
 import 'package:doraa/providers/auth_providers.dart';
@@ -17,6 +17,8 @@ import 'package:doraa/features/auth/presentation/screens/documents_screen.dart';
 import 'package:doraa/features/auth/presentation/screens/emergency_contacts_screen.dart';
 import 'package:doraa/features/auth/presentation/screens/login_screen.dart';
 import 'package:doraa/features/auth/presentation/screens/pending_approval_screen.dart';
+import 'package:doraa/features/auth/presentation/screens/onboarding_screen.dart';
+import 'package:doraa/features/auth/presentation/screens/splash_screen.dart';
 
 class AuthFlowScreen extends ConsumerStatefulWidget {
   const AuthFlowScreen({super.key});
@@ -70,6 +72,7 @@ class _AuthFlowScreenState extends ConsumerState<AuthFlowScreen> {
                       Expanded(
                         child: Text(
                           'ÙˆØ¶Ø¹ ØªØ¬Ø±ÙŠØ¨ÙŠ: ÙŠÙ…ÙƒÙ†Ùƒ Ø§Ù„Ø§Ø³ØªÙ…Ø±Ø§Ø± ÙÙŠ ØªØµÙØ­ Ø§Ù„ÙˆØ§Ø¬Ù‡Ø§Øª Ø¨Ø¯ÙˆÙ† Supabase.',
+                          'ÙˆØ¶Ø¹ ØªØ¬Ø±ÙŠØ¨ÙŠ: ÙŠÙ…ÙƒÙ†Ùƒ Ø§Ù„Ø§Ø³ØªÙ…Ø±Ø§Ø± Ù ÙŠ ØªØµÙ Ø­ Ø§Ù„ÙˆØ§Ø¬Ù‡Ø§Øª Ø¨Ø¯ÙˆÙ† Supabase.',
                           style: TextStyle(color: Colors.orange.shade800, fontSize: 12, fontWeight: FontWeight.bold),
                         ),
                       ),
@@ -79,11 +82,15 @@ class _AuthFlowScreenState extends ConsumerState<AuthFlowScreen> {
               Expanded(
                 child: PageView(
                   controller: _pageController,
-                  physics: const NeverScrollableScrollPhysics(), // Prevent manual swiping
                   children: [
-                    WelcomeScreen(onNext: () => _goToPage(1)),
+                    SplashScreen(onNext: () => _goToPage(1)),
+                    OnboardingScreen(
+                      onNext: () => _goToPage(2),
+                      onLogin: () => _goToPage(10),
+                    ),
+                    WelcomeScreen(onNext: () => _goToPage(3)),
                     RoleSelectionScreen(
-                      onRoleSelected: () => _goToPage(2),
+                      onRoleSelected: () => _goToPage(4),
                     ),
                     PhoneOtpScreen(
                       phone: registration.phone,
@@ -108,7 +115,7 @@ class _AuthFlowScreenState extends ConsumerState<AuthFlowScreen> {
                         final messenger = ScaffoldMessenger.of(context);
                         final tr = ref.read(translationProvider).tr;
                         if (!AppConfig.isSupabaseConfigured) {
-                          _goToPage(3);
+                          _goToPage(5);
                           return;
                         }
                         if (!ValidationService.isValidAlgerianPhone(registration.phone)) {
@@ -121,12 +128,12 @@ class _AuthFlowScreenState extends ConsumerState<AuthFlowScreen> {
                         }
                         await ref.read(authProvider.notifier).verifyOtp(phone: registration.phone, token: registration.otp);
                         if (!mounted) return;
-                        messenger.showSnackBar(SnackBar(content: Text(ref.read(authProvider).message ?? 'ØªÙ… Ø§Ù„ØªØ­Ù‚Ù‚')));
+                        messenger.showSnackBar(SnackBar(content: Text(ref.read(authProvider).message ?? 'تم التحقق')));
                         if (ref.read(authProvider).status == AuthStatus.authenticated) {
-                          _goToPage(3);
+                          _goToPage(5);
                         }
                       },
-                      onBack: () => _goToPage(1),
+                      onBack: () => _goToPage(3),
                     ),
                     EmailPasswordScreen(
                       email: registration.email,
@@ -137,28 +144,28 @@ class _AuthFlowScreenState extends ConsumerState<AuthFlowScreen> {
                       onConfirmPasswordChanged: (value) => ref.read(registrationProvider.notifier).updateConfirmPassword(value),
                       onNext: () async {
                         if (!AppConfig.isSupabaseConfigured) {
-                          _goToPage(4);
+                          _goToPage(6);
                           return;
                         }
                         if (!ValidationService.isValidEmail(registration.email)) {
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Ø§Ù„Ø¨Ø±ÙŠØ¯ ØºÙŠØ± ØµØ§Ù„Ø­')));
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('البريد غير صالح')));
                           return;
                         }
                         if (!ValidationService.isValidPassword(registration.password)) {
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ± ÙŠØ¬Ø¨ Ø£Ù† ØªÙƒÙˆÙ† 8 Ø£Ø­Ø±Ù ÙˆØªØ­ØªÙˆÙŠ Ø¹Ù„Ù‰ Ø±Ù‚Ù… ÙˆØ­Ø±Ù ÙƒØ¨ÙŠØ±')));
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('كلمة المرور يجب أن تكون 8 أحرف وتحتوي على رقم وحرف كبير')));
                           return;
                         }
                         if (registration.password != registration.confirmPassword) {
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ÙƒÙ„Ù…ØªØ§ Ø§Ù„Ù…Ø±ÙˆØ± ØºÙŠØ± Ù…ØªØ·Ø§Ø¨Ù‚ØªÙŠÙ†')));
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('كلمتا المرور غير متطابقتين')));
                           return;
                         }
                         await ref.read(authProvider.notifier).signUp(email: registration.email, password: registration.password);
                         if (!mounted) return;
                         if (ref.read(authProvider).status == AuthStatus.authenticated) {
-                          _goToPage(4);
+                          _goToPage(6);
                         }
                       },
-                      onBack: () => _goToPage(2),
+                      onBack: () => _goToPage(4),
                     ),
                     PersonalInfoScreen(
                       fullName: registration.fullName,
@@ -180,9 +187,9 @@ class _AuthFlowScreenState extends ConsumerState<AuthFlowScreen> {
                             return;
                           }
                         }
-                        _goToPage(registration.role == 'driver' ? 5 : 7); // 5 for driver, 7 for Emergency Contacts
+                        _goToPage(registration.role == 'driver' ? 7 : 9); // 7 for driver, 9 for Emergency Contacts
                       },
-                      onBack: () => _goToPage(3),
+                      onBack: () => _goToPage(5),
                     ),
                     DriverVehicleScreen(
                       brand: registration.carBrand,
@@ -195,12 +202,12 @@ class _AuthFlowScreenState extends ConsumerState<AuthFlowScreen> {
                       onYearChanged: (value) => ref.read(registrationProvider.notifier).updateCarYear(value),
                       onColorChanged: (value) => ref.read(registrationProvider.notifier).updateCarColor(value),
                       onPlateChanged: (value) => ref.read(registrationProvider.notifier).updateCarPlate(value),
-                      onNext: () => _goToPage(6),
-                      onBack: () => _goToPage(4),
+                      onNext: () => _goToPage(8),
+                      onBack: () => _goToPage(6),
                     ),
                     DocumentsScreen(
-                      onNext: () => _goToPage(7),
-                      onBack: () => _goToPage(5),
+                      onNext: () => _goToPage(9),
+                      onBack: () => _goToPage(7),
                     ),
                     EmergencyContactsScreen(
                       contacts: registration.emergencyContacts,
@@ -210,7 +217,7 @@ class _AuthFlowScreenState extends ConsumerState<AuthFlowScreen> {
                         final navigator = Navigator.of(context);
                         if (AppConfig.isSupabaseConfigured) {
                           if (!ValidationService.hasValidEmergencyContact(registration.emergencyContacts)) {
-                            messenger.showSnackBar(const SnackBar(content: Text('Ø£Ø¶Ù Ø¬Ù‡Ø© Ø·ÙˆØ§Ø±Ø¦ ÙˆØ§Ø­Ø¯Ø© Ø¹Ù„Ù‰ Ø§Ù„Ø£Ù‚Ù„')));
+                            messenger.showSnackBar(const SnackBar(content: Text('أضف جهة طوارئ واحدة على الأقل')));
                             return;
                           }
                         }
@@ -219,19 +226,19 @@ class _AuthFlowScreenState extends ConsumerState<AuthFlowScreen> {
                           await ref.read(authProvider.notifier).completeRegistration(registration);
                           if (!mounted) return;
                           final authState = ref.read(authProvider);
-                          messenger.showSnackBar(SnackBar(content: Text(authState.message ?? 'ØªÙ… Ø­ÙØ¸ Ø§Ù„Ù…Ù„Ù Ø§Ù„Ø´Ø®ØµÙŠ')));
+                          messenger.showSnackBar(SnackBar(content: Text(authState.message ?? 'تم حفظ الملف الشخصي')));
                           if (authState.status != AuthStatus.authenticated) {
                             return;
                           }
                         }
 
                         if (registration.role == 'driver') {
-                          _goToPage(9); // Pending approval
+                          _goToPage(11); // Pending approval
                         } else {
                           navigator.pushReplacement(MaterialPageRoute(builder: (_) => const TermsAcceptanceScreen()));
                         }
                       },
-                      onBack: () => _goToPage(registration.role == 'driver' ? 6 : 4),
+                      onBack: () => _goToPage(registration.role == 'driver' ? 8 : 6),
                     ),
                     LoginScreen(
                       email: registration.email,
@@ -242,20 +249,20 @@ class _AuthFlowScreenState extends ConsumerState<AuthFlowScreen> {
                         final messenger = ScaffoldMessenger.of(context);
                         final navigator = Navigator.of(context);
                         if (!AppConfig.isSupabaseConfigured) {
-                          messenger.showSnackBar(const SnackBar(content: Text('ÙˆØ¶Ø¹ ØªØ¬Ø±ÙŠØ¨ÙŠ - Ø¯Ø®ÙˆÙ„ Ù…Ø¨Ø§Ø´Ø±')));
+                          messenger.showSnackBar(const SnackBar(content: Text('وضع تجريبي - دخول مباشر')));
                           navigator.pushReplacement(MaterialPageRoute(builder: (_) => const TermsAcceptanceScreen()));
                           return;
                         }
                         await ref.read(authProvider.notifier).signInWithEmail(email: registration.email, password: registration.password);
                         if (!mounted) return;
                         final authState = ref.read(authProvider);
-                        messenger.showSnackBar(SnackBar(content: Text(authState.message ?? 'ØªÙ… ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø¯Ø®ÙˆÙ„')));
+                        messenger.showSnackBar(SnackBar(content: Text(authState.message ?? 'تم تسجيل الدخول')));
                         if (authState.status == AuthStatus.authenticated) {
                           navigator.pushReplacement(MaterialPageRoute(builder: (_) => const TermsAcceptanceScreen()));
                         }
                       },
                       onForgotPassword: () {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Ø³ÙŠØªÙ… Ø¥Ø¶Ø§ÙØ© Ø§Ø³ØªØ¹Ø§Ø¯Ø© ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ± Ù„Ø§Ø­Ù‚Ù‹Ø§')));
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('سيتم إضافة استعادة كلمة المرور لاحقًا')));
                       },
                       onBack: () => _goToPage(1),
                     ),

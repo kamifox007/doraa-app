@@ -108,14 +108,14 @@ class SplashApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       home: Scaffold(
-        backgroundColor: const Color(0xFF00897B),
+        backgroundColor: const Color(0xFF121212), // Dark premium background
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: const [
-              Icon(Icons.directions_car_filled, size: 80, color: Colors.white),
+              Icon(Icons.diamond_rounded, size: 80, color: Color(0xFFFFD700)), // Gold Diamond
               SizedBox(height: 20),
-              CircularProgressIndicator(color: Colors.white),
+              CircularProgressIndicator(color: Color(0xFFFFD700)), // Gold Indicator
             ],
           ),
         ),
@@ -235,9 +235,11 @@ class MyApp extends ConsumerWidget {
           ),
         ),
       ),
-      home: Supabase.instance.client.auth.currentSession != null
-          ? const RideFlowScreen()
-          : (AppConfig.isSupabaseConfigured ? const AuthFlowScreen() : const HomePage()),
+      home: AppConfig.isSupabaseConfigured
+          ? (Supabase.instance.client.auth.currentSession != null
+              ? const RideFlowScreen()
+              : const AuthFlowScreen())
+          : const AuthFlowScreen(),
     );
   }
 }
