@@ -1,5 +1,11 @@
+import 'translations_core.dart';
+import 'translations_auth.dart';
+import 'translations_ride.dart';
+import 'translations_wallet.dart';
+import 'translations_admin.dart';
+
 class AppTranslations {
-  static const Map<String, Map<String, String>> translations = {
+  static const Map<String, Map<String, String>> oldMap = {
     // ── Common ──
     'dora_app': {
       'ar': 'تطبيق DORA',
@@ -26,7 +32,6 @@ class AppTranslations {
       'fr': 'Déconnexion',
       'en': 'Logout',
     },
-
     // ── Profile Screen ──
     'profile_title': {
       'ar': 'ملفي الشخصي',
@@ -109,6 +114,17 @@ class AppTranslations {
       'en': 'Choose Language',
     },
   };
+
+  static Map<String, Map<String, String>> get translations {
+    return {
+      ...oldMap,
+      ...CoreTranslations.map,
+      ...AuthTranslations.map,
+      ...RideTranslations.map,
+      ...WalletTranslations.map,
+      ...AdminTranslations.map,
+    };
+  }
 
   static String get(String key, String locale) {
     if (translations.containsKey(key)) {

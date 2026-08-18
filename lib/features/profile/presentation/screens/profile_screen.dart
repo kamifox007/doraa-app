@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:doraa/services/translation_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,6 +13,7 @@ import 'package:doraa/features/support/presentation/screens/support_screen.dart'
 import 'package:doraa/features/legal/screens/privacy_policy_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:doraa/core/widgets/golden_back_button.dart';
 
 import 'package:doraa/features/auth/presentation/screens/driver_registration_screen.dart';
 import 'package:doraa/features/wallet/presentation/screens/driver_wallet_screen.dart';
@@ -176,7 +177,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         elevation: 0,
         title: Text(tr('my_profile_title'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, shadows: [Shadow(color: Colors.black26, blurRadius: 10)])),
         centerTitle: true,
-        iconTheme: const IconThemeData(color: Color(0xFFFFD700)),
+        leading: const GoldenBackButton(),
       ),
       body: SafeArea(
         child: CustomScrollView(
@@ -769,8 +770,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ],
           ),
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildSettingsTile({required IconData icon, required Color color, required String title, String? subtitle, required VoidCallback onTap}) {
@@ -807,7 +807,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E1E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.5))),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: const Color(0xFFFFD700).withValues(alpha: 0.5))),
         title: Text(tr('choose_language_dialog'), style: const TextStyle(color: Colors.white)),
         content: Column(
           mainAxisSize: MainAxisSize.min,

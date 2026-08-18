@@ -692,4 +692,30 @@ class RideService {
       },
     ).subscribe();
   }
+  Future<String?> getOpponentPhoneNumber(String rideId, bool isDriver) async {
+    try {
+      final rideResponse = await client.from('rides').select('rider_id, driver_id').eq('id', rideId).maybeSingle();
+      if (rideResponse == null) return null;
+      
+      final targetUserId = isDriver ? rideResponse['rider_id'] : rideResponse['driver_id'];
+      if (targetUserId == null) return null;
+
+      final profileResponse = await client.from('user_profiles').select('phone').eq('user_id', targetUserId).maybeSingle();
+      return profileResponse?['phone'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<String?> getOpponentId(String rideId, bool isDriver) async {
+    try {
+      final rideResponse = await client.from('rides').select('rider_id, driver_id').eq('id', rideId).maybeSingle();
+      if (rideResponse == null) return null;
+      
+      return (isDriver ? rideResponse['rider_id'] : rideResponse['driver_id']) as String?;
+    } catch (_) {
+      return null;
+    }
+  }
 }
+

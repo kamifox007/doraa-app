@@ -4,8 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:doraa/core/widgets/glass_container.dart';
 import 'package:doraa/services/notification_db_service.dart';
 import 'package:doraa/models/notification_model.dart';
-import 'package:intl/intl.dart';
-
 class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
 
@@ -63,9 +61,13 @@ class NotificationsScreen extends ConsumerWidget {
                 // Determine icon based on type
                 IconData icon;
                 Color iconColor = const Color(0xFFFFD700);
-                if (notif.type == 'SYSTEM') icon = Icons.info_outline;
-                else if (notif.type == 'PROMO') icon = Icons.local_offer;
-                else icon = Icons.notifications;
+                if (notif.type == 'SYSTEM') {
+                  icon = Icons.info_outline;
+                } else if (notif.type == 'PROMO') {
+                  icon = Icons.local_offer;
+                } else {
+                  icon = Icons.notifications;
+                }
 
                 return GestureDetector(
                   onTap: () {
@@ -92,10 +94,10 @@ class NotificationsScreen extends ConsumerWidget {
                               const SizedBox(height: 4),
                               Text(notif.body, style: TextStyle(color: Colors.white.withValues(alpha: notif.isRead ? 0.5 : 0.9))),
                               const SizedBox(height: 8),
-                              Text(
-                                DateFormat('yyyy/MM/dd HH:mm').format(notif.createdAt), 
-                                style: const TextStyle(fontSize: 12, color: Color(0xFFFFD700), fontWeight: FontWeight.w500)
-                              ),
+                                Text(
+                                  "${notif.createdAt.year}/${notif.createdAt.month.toString().padLeft(2, '0')}/${notif.createdAt.day.toString().padLeft(2, '0')} ${notif.createdAt.hour.toString().padLeft(2, '0')}:${notif.createdAt.minute.toString().padLeft(2, '0')}", 
+                                  style: const TextStyle(fontSize: 12, color: Color(0xFFFFD700), fontWeight: FontWeight.w500)
+                                ),
                             ],
                           ),
                         ),

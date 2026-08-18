@@ -1,8 +1,10 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:doraa/services/translation_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:doraa/providers/auth_providers.dart';
+import 'package:doraa/core/widgets/golden_back_button.dart';
+import 'package:doraa/services/draft_service.dart';
 
 
 class SupportScreen extends ConsumerStatefulWidget {
@@ -19,6 +21,31 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
   final _descriptionController = TextEditingController();
   String? _selectedCategory;
   bool _isLoading = false;
+  final String _draftKey = 'support_complaint_form';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDraft();
+    _descriptionController.addListener(_saveDraft);
+  }
+
+  Future<void> _loadDraft() async {
+    final draft = await DraftService.loadDraft(_draftKey);
+    if (draft != null && mounted) {
+      setState(() {
+        if (draft['category'] != null) _selectedCategory = draft['category'];
+        if (draft['description'] != null) _descriptionController.text = draft['description'];
+      });
+    }
+  }
+
+  void _saveDraft() {
+    DraftService.saveDraft(_draftKey, {
+      'category': _selectedCategory,
+      'description': _descriptionController.text,
+    });
+  }
 
   Future<void> _submitComplaint() async {
     final tr = ref.read(translationProvider).tr;
@@ -46,16 +73,16 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
         'status': 'open',
       });
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(tr('complaint_sent_success'))),
-        );
-        Navigator.pop(context);
-      }
+      if (!mounted) return;
+      await DraftService.clearDraft(_draftKey); // مسح المسودة بعد الإرسال الناجح
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(tr('complaint_sent_success'))),
+      );
+      Navigator.pop(context);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('error_occurred_prefix')} $e')));
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('error_occurred_prefix')} $e')));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -63,6 +90,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
 
   @override
   void dispose() {
+    _descriptionController.removeListener(_saveDraft);
     _descriptionController.dispose();
     super.dispose();
   }
@@ -83,7 +111,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
       appBar: AppBar(
         title: Text(tr('help_and_complaints'), style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         backgroundColor: const Color(0xFF121212),
-        iconTheme: const IconThemeData(color: Color(0xFFFFD700)),
+        leading: const GoldenBackButton(),
         surfaceTintColor: Colors.transparent,
       ),
       body: SingleChildScrollView(
@@ -133,7 +161,10 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
                   items: categories.map((cat) {
                     return DropdownMenuItem(value: cat, child: Text(cat));
                   }).toList(),
-                  onChanged: (val) => setState(() => _selectedCategory = val),
+                  onChanged: (val) {
+                    setState(() => _selectedCategory = val);
+                    _saveDraft();
+                  },
                 ),
               ),
             ),

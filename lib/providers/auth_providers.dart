@@ -18,7 +18,20 @@ final uploadProvider = StateNotifierProvider<UploadController, UploadState>(
 );
 
 class AuthController extends StateNotifier<AuthState> {
-  AuthController(this._authService) : super(const AuthState());
+  AuthController(this._authService) : super(const AuthState()) {
+    _checkInitialSession();
+  }
+
+  void _checkInitialSession() {
+    final user = _authService.currentUser;
+    if (user != null) {
+      state = state.copyWith(
+        status: AuthStatus.authenticated,
+        isAuthenticated: true,
+        userId: user.id,
+      );
+    }
+  }
 
   final AuthService _authService;
 

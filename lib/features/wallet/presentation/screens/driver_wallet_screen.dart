@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../services/wallet_service.dart';
 import '../../../../providers/auth_providers.dart';
-import '../../../../services/translation_service.dart';
+import 'payment_gateway_screen.dart';
 
 class DriverWalletScreen extends ConsumerStatefulWidget {
   const DriverWalletScreen({super.key});
@@ -86,7 +86,6 @@ class _DriverWalletScreenState extends ConsumerState<DriverWalletScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final tr = ref.watch(translationProvider).tr;
     final userId = ref.watch(authProvider).userId;
 
     return Scaffold(
@@ -157,10 +156,10 @@ class _DriverWalletScreenState extends ConsumerState<DriverWalletScreen> {
                     const SizedBox(height: 16),
                     OutlinedButton.icon(
                       onPressed: () {
-                        // TODO: Implement online payment like CIB/Edahabia later
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('الدفع الإلكتروني غير متاح حالياً')),
-                        );
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const PaymentGatewayScreen()),
+                        ).then((_) => _loadBalance());
                       },
                       icon: const Icon(Icons.credit_card),
                       label: const Text('شحن بالبطاقة البنكية', style: TextStyle(fontSize: 18)),

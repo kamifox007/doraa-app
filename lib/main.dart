@@ -19,6 +19,8 @@ import 'providers/locale_provider.dart';
 import 'services/translation_service.dart';
 import 'core/security/root_detection.dart';
 import 'services/diagnostics_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:doraa/features/ride/presentation/screens/ride_flow.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -233,7 +235,9 @@ class MyApp extends ConsumerWidget {
           ),
         ),
       ),
-      home: AppConfig.isSupabaseConfigured ? const AuthFlowScreen() : const HomePage(),
+      home: Supabase.instance.client.auth.currentSession != null
+          ? const RideFlowScreen()
+          : (AppConfig.isSupabaseConfigured ? const AuthFlowScreen() : const HomePage()),
     );
   }
 }

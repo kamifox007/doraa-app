@@ -1,7 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/notification_model.dart';
-import 'auth_service.dart'; // To get the current user
 import 'package:doraa/providers/auth_providers.dart';
 
 final notificationDbServiceProvider = Provider((ref) {
@@ -30,7 +30,7 @@ class NotificationDBService {
 
       return (response as List).map((json) => NotificationModel.fromJson(json)).toList();
     } catch (e) {
-      print('Error fetching notifications: $e');
+      debugPrint('Error fetching notifications: $e');
       return [];
     }
   }
@@ -43,7 +43,7 @@ class NotificationDBService {
           .update({'is_read': true})
           .eq('id', notificationId);
     } catch (e) {
-      print('Error marking notification as read: $e');
+      debugPrint('Error marking notification as read: $e');
     }
   }
 
@@ -61,7 +61,7 @@ class NotificationDBService {
           .eq('user_id', userId)
           .eq('is_read', false);
     } catch (e) {
-      print('Error marking all notifications as read: $e');
+      debugPrint('Error marking all notifications as read: $e');
     }
   }
 
@@ -102,7 +102,7 @@ class NotificationDBService {
         await _supabase.from('notifications').insert(notificationsToInsert);
       }
     } catch (e) {
-      print('Error sending global notification: $e');
+      debugPrint('Error sending global notification: $e');
       rethrow;
     }
   }
@@ -123,7 +123,7 @@ class NotificationDBService {
         'is_read': false,
       });
     } catch (e) {
-      print('Error sending notification: $e');
+      debugPrint('Error sending notification: $e');
     }
   }
 }

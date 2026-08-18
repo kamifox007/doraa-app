@@ -5,6 +5,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:doraa/services/translation_service.dart';
+import 'package:doraa/services/wallet_service.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -22,7 +23,6 @@ import 'package:doraa/services/ai_service.dart';
 import 'package:doraa/services/rating_service.dart' as rating_svc;
 import 'package:doraa/models/rating_model.dart' as rating_mod;
 import 'package:doraa/providers/auth_providers.dart';
-import 'package:doraa/core/widgets/glass_container.dart';
 import 'package:doraa/features/profile/presentation/screens/profile_screen.dart';
 import 'package:doraa/features/subscription/presentation/screens/subscription_screen.dart';
 import 'package:doraa/features/support/presentation/screens/support_screen.dart';
@@ -149,27 +149,7 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> with TickerProv
   final List<MockVehicle> _mockVehicles = [];
   final List<MockRider> _mockRiders = [];
   
-  Timer? _simulationTimer;
-  int _simulationIndex = 0;
 
-  void _startTripSimulation() {
-    if (_routePolyline == null || _routePolyline!.isEmpty) return;
-    _simulationIndex = 0;
-    _simulationTimer?.cancel();
-    // ØªØ­Ø±ÙŠÙƒ Ø³ÙŠØ§Ø±Ø© Ø§Ù„Ø±Ø­Ù„Ø© Ø¨Ø¯Ù‚Ø© Ø¹Ù„Ù‰ Ù…Ø³Ø§Ø± Ø§Ù„Ø·Ø±ÙŠÙ‚ Ø§Ù„Ù…Ø±Ø³ÙˆÙ…
-    _simulationTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) {
-      if (!mounted || _step != RideFlowStep.activeRide) {
-        timer.cancel();
-        return;
-      }
-      if (_simulationIndex < _routePolyline!.length) {
-        setState(() => driverLocation = _routePolyline![_simulationIndex]);
-        _simulationIndex += 3; // ØªØ®Ø·ÙŠ Ø¨Ø¹Ø¶ Ø§Ù„Ù†Ù‚Ø§Ø· Ù„ØªØ³Ø±ÙŠØ¹ Ø­Ø±ÙƒØ© Ø§Ù„Ù…Ø­Ø§ÙƒØ§Ø© Ø¨Ø´ÙƒÙ„ Ù…Ù†Ø§Ø³Ø¨
-      } else {
-        timer.cancel();
-      }
-    });
-  }
 
   StreamSubscription<List<RideMessage>>? _messagesSubscription;
   StreamSubscription<Map<String, dynamic>?>? _locationSubscription;
@@ -278,8 +258,9 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> with TickerProv
           if (res != null && mounted) setState(() => _userRole = res['role']);
         } catch (_) {}
       }
-      final notifRole = isDriverMode ? 'driver' : 'rider';
-      _rideService.startNotificationListener(userId ?? 'demo-user', notifRole);
+      if (userId != null) {
+        _rideService.startNotificationListener(userId, isDriverMode ? 'driver' : 'rider');
+      }
     });
   }
 
@@ -307,7 +288,6 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> with TickerProv
     _audioRecorder.dispose();
     _audioPlayer.dispose();
     _mockCarsTimer?.cancel();
-    _simulationTimer?.cancel();
     _debounceTimer?.cancel();
     _searchingAnimController?.dispose();
     _autoOfflineTimer?.cancel();
@@ -1134,7 +1114,12 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> with TickerProv
 
   Future<void> _submitRideRequest() async {
     setState(() => isSubmitting = true);
-    final riderId = ref.read(authProvider).userId ?? 'demo-user';
+    final riderId = ref.read(authProvider).userId;
+    if (riderId == null) {
+      final translation = ref.read(translationProvider).tr;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(translation('error_getting_phone'))));
+      return;
+    }
     final result = await _rideService.createRide(
       riderId: riderId,
       pickup: pickupAddress,
@@ -1177,14 +1162,14 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> with TickerProv
                           // Ø±Ø­Ù„Ø© ØªØ´Ø§Ø±ÙƒÙŠØ© = Ø§Ù„Ø³Ø¹Ø± Ø«Ø§Ø¨Øª ÙˆØ¨Ø¯ÙˆÙ† ØªÙØ§ÙˆØ¶ØŒ Ù†Ù†ØªÙ‚Ù„ Ù…Ø¨Ø§Ø´Ø±Ø© Ù„Ù„Ø±Ø­Ù„Ø© Ø§Ù„Ù†Ø´Ø·Ø©
                           _handleDriverSelection(driver, 'accepted');
                         } else {
-                          // Ø±Ø­Ù„Ø© ÙØ±Ø¯ÙŠØ© = ÙŠÙ…ÙƒÙ† Ø§Ù„ØªÙØ§ÙˆØ¶
+                          // Ø±Ø­Ù„Ø© Ù Ø±Ø¯ÙŠØ© = ÙŠÙ…ÙƒÙ† Ø§Ù„ØªÙ Ø§ÙˆØ¶
                           _handleDriverSelection(driver, 'counter');
                         }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: isSharedRide ? Colors.green : Theme.of(context).colorScheme.primary,
                       ),
-                      child: Text(isSharedRide ? 'Ù‚Ø¨ÙˆÙ„' : 'Ù…ÙØ§ÙˆØ¶Ø©', style: const TextStyle(color: Colors.white)),
+                      child: Text(isSharedRide ? 'Ù‚Ø¨ÙˆÙ„' : 'Ù…Ù Ø§ÙˆØ¶Ø©', style: const TextStyle(color: Colors.white)),
                     ),
                   ),
                 )),
@@ -1204,11 +1189,11 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> with TickerProv
         _step = RideFlowStep.activeRide; // Ù†Ù†ØªÙ‚Ù„ Ù„Ù„Ø±Ø­Ù„Ø© Ù…Ø¨Ø§Ø´Ø±Ø©
       } else if (action == 'counter') {
         status = 'negotiating';
-        negotiationHistory.add('ØªÙ… ÙØªØ­ Ù…ÙØ§ÙˆØ¶Ø© Ù…Ø¹ ${driver.name}');
+        negotiationHistory.add('ØªÙ… Ù ØªØ­ Ù…Ù Ø§ÙˆØ¶Ø© Ù…Ø¹ ${driver.name}');
         _step = RideFlowStep.negotiation;
       } else {
         status = 'declined';
-        negotiationHistory.add('ØªÙ… Ø±ÙØ¶ Ø§Ù„Ø¹Ø±Ø¶ Ù…Ù† ${driver.name}');
+        negotiationHistory.add('ØªÙ… Ø±Ù Ø¶ Ø§Ù„Ø¹Ø±Ø¶ Ù…Ù† ${driver.name}');
         _step = RideFlowStep.home;
       }
     });
@@ -1226,7 +1211,6 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> with TickerProv
         status = 'accepted';
         negotiationHistory.add('ØªÙ… Ù‚Ø¨ÙˆÙ„ Ø§Ù„Ø¹Ø±Ø¶');
         _step = RideFlowStep.activeRide;
-        _startTripSimulation(); // ØªÙØ¹ÙŠÙ„ Ù…Ø­Ø§ÙƒØ§Ø© Ø³ÙŠØ± Ø§Ù„Ø³ÙŠØ§Ø±Ø© Ø¹Ù„Ù‰ Ø·Ø±ÙŠÙ‚ Ø§Ù„Ø®Ø±ÙŠØ·Ø©
         if (currentRideId != null) {
           if (isDriverMode) {
             _trackingService.startTracking(
@@ -1236,7 +1220,7 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> with TickerProv
               },
             );
             // â”€â”€ Ø¨Ø¯Ø¡ Ù…Ø±Ø§Ù‚Ø¨Ø© Ø§Ù„Ø°ÙƒØ§Ø¡ Ø§Ù„Ø§ØµØ·Ù†Ø§Ø¹ÙŠ Ù„Ù„Ø±Ø­Ù„Ø© â”€â”€
-            final driverId = ref.read(authProvider).userId ?? 'demo-driver';
+            final driverId = ref.read(authProvider).userId ?? '';
             AIService.startAnomalyDetection(
               rideId: currentRideId!,
               driverId: driverId,
@@ -1269,38 +1253,47 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> with TickerProv
       return;
     }
 
-    final riderId = ref.read(authProvider).userId ?? 'demo-user';
-    final driverId = isDriverMode ? riderId : 'demo-driver';
-    final fare = isDriverMode && selectedRequest != null ? selectedRequest!.proposedFare : proposedFare;
+    final currentUserId = ref.read(authProvider).userId ?? '';
+    final driverId = isDriverMode ? currentUserId : (selectedDriverId ?? '');
+    // In rider mode, riderId = currentUserId; in driver mode, riderId = selectedRequest?.riderId ?? ''
 
-    AIService.stopAnomalyDetection(); // Ø¥ÙŠÙ‚Ø§Ù Ù…Ø±Ø§Ù‚Ø¨Ø© AI Ø¹Ù†Ø¯ Ø§Ù†ØªÙ‡Ø§Ø¡ Ø§Ù„Ø±Ø­Ù„Ø©
+    final currentFare = selectedRequest?.proposedFare ?? proposedFare;
+
+    AIService.stopAnomalyDetection(); // إيقاف مراقبة AI عند انتهاء الرحلة
     await _rideService.updateRideStatus(rideId: currentRideId!, status: 'completed');
     await _rideService.createCommissionRecord(
       rideId: currentRideId!,
-      fare: fare,
+      fare: currentFare,
       driverId: driverId,
     );
 
+    if (isDriverMode) {
+      final commission = RideService.calculateCommission(currentFare);
+      await ref.read(walletServiceProvider).deductCommission(commission, currentRideId!);
+    }
+
     paymentConfirmed = false;
+
+    if (!mounted) return;
 
     if (!isDriverMode) {
       setState(() {
         rideHistory.insert(0, {
           'date': currentRideDate,
-          'route': '$pickupAddress â†’ $dropoffAddress',
-          'fare': fare,
-          'status': 'Ù…ÙƒØªÙ…Ù„',
+          'route': '$pickupAddress → $dropoffAddress',
+          'fare': currentFare,
+          'status': 'مكتمل',
         });
       });
     } else {
       setState(() {
         driverRideHistory.insert(0, {
           'date': currentRideDate,
-          'route': selectedRequest != null ? '${selectedRequest!.pickup} â†’ ${selectedRequest!.dropoff}' : '$pickupAddress â†’ $dropoffAddress',
-          'fare': fare,
-          'commission': RideService.calculateCommission(fare),
-          'net': RideService.calculateNetEarnings(fare),
-          'status': 'Ù…ÙƒØªÙ…Ù„',
+          'route': selectedRequest != null ? '${selectedRequest!.pickup} → ${selectedRequest!.dropoff}' : '$pickupAddress → $dropoffAddress',
+          'fare': currentFare,
+          'commission': RideService.calculateCommission(currentFare),
+          'net': RideService.calculateNetEarnings(currentFare),
+          'status': 'مكتمل',
         });
       });
     }
@@ -1311,10 +1304,15 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> with TickerProv
       return;
     }
 
-    final currentUserId = ref.read(authProvider).userId ?? 'demo-user';
+    final currentUserId = ref.read(authProvider).userId ?? '';
     final reviewerId = currentUserId;
-    final revieweeId = isDriverMode ? 'demo-rider' : 'demo-driver';
-
+    
+    final revieweeId = await _rideService.getOpponentId(currentRideId!, isDriverMode);
+    if (!mounted) return;
+    if (revieweeId == null || revieweeId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('خطأ: لم يتم العثور على الطرف الآخر للتقييم.')));
+      return;
+    }
     try {
       final ratingService = ref.read(rating_svc.ratingServiceProvider);
       final newRating = rating_mod.RatingModel(
@@ -1406,11 +1404,11 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> with TickerProv
   // â”€â”€ getter for selected driver id â”€â”€
   String? get selectedDriverId => selectedDriver?.id;
 
-  // â”€â”€ ØªÙØ¹ÙŠÙ„ / ØªØ¹Ø·ÙŠÙ„ ÙˆØ¶Ø¹ Ø§Ù„Ø³Ø§Ø¦Ù‚Ø© â”€â”€
+  // â”€â”€ ØªÙ Ø¹ÙŠÙ„ / ØªØ¹Ø·ÙŠÙ„ ÙˆØ¶Ø¹ Ø§Ù„Ø³Ø§Ø¦Ù‚Ø© â”€â”€
   // â”€â”€ ØªØ£ÙƒÙŠØ¯ Ù…ÙˆÙ‚Ø¹ Ø§Ù„Ø§Ù†Ø·Ù„Ø§Ù‚ â”€â”€
   // â”€â”€ Ø¥Ù„ØºØ§Ø¡ Ø§Ù„Ø±Ø­Ù„Ø© Ù…Ø¹ Ø§Ù„Ø±Ø³ÙˆÙ… â”€â”€
   Future<void> _cancelRide() async {
-    final mockDistanceKm = 0.5; // Ù…Ø³Ø§ÙØ© Ø§Ù„Ø³Ø§Ø¦Ù‚Ø© Ø¹Ù† Ù…ÙˆÙ‚Ø¹Ùƒ (Ù„Ù„ØªØ¬Ø±Ø¨Ø©)
+    final mockDistanceKm = 0.5; // Ù…Ø³Ø§Ù Ø© Ø§Ù„Ø³Ø§Ø¦Ù‚Ø© Ø¹Ù† Ù…ÙˆÙ‚Ø¹Ùƒ (Ù„Ù„ØªØ¬Ø±Ø¨Ø©)
     final mockMinutes = 5; // Ø§Ù„Ø¯Ù‚Ø§Ø¦Ù‚ Ø§Ù„ØªÙŠ Ù…Ø±Øª
 
     final fee = RideService.calculateCancellationFee(mockDistanceKm, mockMinutes);
@@ -1421,7 +1419,7 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> with TickerProv
         title: const Text('Ø¥Ù„ØºØ§Ø¡ Ø§Ù„Ø±Ø­Ù„Ø©', style: TextStyle(color: Colors.red)),
         content: Text(
           fee > 0 
-          ? 'Ù‡Ù„ Ø£Ù†Øª Ù…ØªØ£ÙƒØ¯ Ù…Ù† Ø¥Ù„ØºØ§Ø¡ Ø§Ù„Ø±Ø­Ù„Ø©ØŸ\n\nØ³ÙŠØªÙ… Ø§Ø­ØªØ³Ø§Ø¨ ØºØ±Ø§Ù…Ø© Ø¥Ù„ØºØ§Ø¡ Ù‚Ø¯Ø±Ù‡Ø§ ${fee.toInt()} Ø¯Ø¬ ØªØ¶Ø§Ù Ø¥Ù„Ù‰ Ù…Ø¯ÙŠÙˆÙ†ÙŠØªÙƒ Ù„Ø£Ù† Ø§Ù„Ø³Ø§Ø¦Ù‚Ø© Ø£ØµØ¨Ø­Øª Ù‚Ø±ÙŠØ¨Ø© Ø¬Ø¯Ø§Ù‹ (Ø£Ù‚Ù„ Ù…Ù† 1 ÙƒÙ…).'
+          ? 'Ù‡Ù„ Ø£Ù†Øª Ù…ØªØ£ÙƒØ¯ Ù…Ù† Ø¥Ù„ØºØ§Ø¡ Ø§Ù„Ø±Ø­Ù„Ø©ØŸ\n\nØ³ÙŠØªÙ… Ø§Ø­ØªØ³Ø§Ø¨ ØºØ±Ø§Ù…Ø© Ø¥Ù„ØºØ§Ø¡ Ù‚Ø¯Ø±Ù‡Ø§ ${fee.toInt()} Ø¯Ø¬ ØªØ¶Ø§Ù  Ø¥Ù„Ù‰ Ù…Ø¯ÙŠÙˆÙ†ÙŠØªÙƒ Ù„Ø£Ù† Ø§Ù„Ø³Ø§Ø¦Ù‚Ø© Ø£ØµØ¨Ø­Øª Ù‚Ø±ÙŠØ¨Ø© Ø¬Ø¯Ø§Ù‹ (Ø£Ù‚Ù„ Ù…Ù† 1 ÙƒÙ…).'
           : 'Ù‡Ù„ Ø£Ù†Øª Ù…ØªØ£ÙƒØ¯ Ù…Ù† Ø¥Ù„ØºØ§Ø¡ Ø§Ù„Ø±Ø­Ù„Ø©ØŸ'
         ),
         actions: [
@@ -1444,7 +1442,7 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> with TickerProv
       await _rideService.updateRideStatus(rideId: currentRideId!, status: 'cancelled');
       if (fee > 0) {
         await RideService.applyCancellationPenalty(
-          userId: ref.read(authProvider).userId ?? 'demo-user',
+          userId: ref.read(authProvider).userId ?? '',
           feeAmount: fee,
           rideId: currentRideId!,
         );
@@ -1494,7 +1492,8 @@ class _RideFlowScreenState extends ConsumerState<RideFlowScreen> with TickerProv
       final file = getPlatformFile(_recordingPath!);
       final url = await _rideService.uploadVoiceNote(file, currentRideId!);
       if (url != null) {
-        final senderId = ref.read(authProvider).userId ?? 'demo-user';
+        final senderId = ref.read(authProvider).userId;
+        if (senderId == null) return;
         await _rideService.sendMessage(
           rideId: currentRideId!,
           senderId: senderId,

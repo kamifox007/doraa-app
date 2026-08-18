@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:doraa/providers/auth_providers.dart';
 import 'package:doraa/services/ride_service.dart';
+import 'package:doraa/core/widgets/golden_back_button.dart';
 import 'package:doraa/core/widgets/glass_container.dart';
 import 'package:doraa/services/wallet_service.dart' as package_doraa_services_wallet_service;
 
@@ -252,7 +253,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFFFFD700)),
+        leading: const GoldenBackButton(),
       ),
       body: Container(
         color: const Color(0xFF121212),

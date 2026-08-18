@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/rating_model.dart';
 
@@ -13,7 +14,7 @@ class RatingService {
       await _supabase.from('ratings').insert(rating.toJson());
     } catch (e) {
       // In a real app, handle offline queuing or specific errors
-      print('Error submitting rating: $e');
+      debugPrint('Error submitting rating: $e');
       rethrow;
     }
   }
@@ -34,7 +35,7 @@ class RatingService {
       }
       return total / response.length;
     } catch (e) {
-      print('Error fetching average rating: $e');
+      debugPrint('Error fetching average rating: $e');
       return 5.0;
     }
   }
@@ -51,7 +52,7 @@ class RatingService {
 
       return (response as List).map((json) => RatingModel.fromJson(json)).toList();
     } catch (e) {
-      print('Error fetching recent reviews: $e');
+      debugPrint('Error fetching recent reviews: $e');
       return [];
     }
   }

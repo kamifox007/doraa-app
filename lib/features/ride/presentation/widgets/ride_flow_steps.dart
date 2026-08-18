@@ -616,7 +616,7 @@ extension _RideFlowStepsExtension on _RideFlowScreenState {
                     title: Text(tr('available_for_drivers'), style: const TextStyle(color: Colors.white)),
                     subtitle: Text(isDriverOnline ? tr('online_for_requests') : tr('offline'), style: const TextStyle(color: Colors.white70)),
                     value: isDriverOnline,
-                    activeColor: const Color(0xFFFFD700),
+                    activeThumbColor: const Color(0xFFFFD700),
                     onChanged: (value) => _setDriverOnline(value),
                   ),
                 ),
@@ -630,7 +630,7 @@ extension _RideFlowStepsExtension on _RideFlowScreenState {
                   itemCount: pendingRequests.length,
                   separatorBuilder: (context, index) => const SizedBox(height: 10),
                   itemBuilder: (context, index) {
-                    // ØªØ±ØªÙŠØ¨ Ø§Ù„Ø·Ù„Ø¨Ø§Øª Ù…Ù† Ø§Ù„Ø£Ù‚Ø±Ø¨ Ù„Ù„Ø£Ø¨Ø¹Ø¯ (Ø®ÙˆØ§Ø±Ø²Ù…ÙŠØ© Ø§Ù„ÙØ±Ø² Ø§Ù„Ù…ÙƒØ§Ù†ÙŠ)
+                    // ØªØ±ØªÙŠØ¨ Ø§Ù„Ø·Ù„Ø¨Ø§Øª Ù…Ù† Ø§Ù„Ø£Ù‚Ø±Ø¨ Ù„Ù„Ø£Ø¨Ø¹Ø¯ (Ø®ÙˆØ§Ø±Ø²Ù…ÙŠØ© Ø§Ù„Ù Ø±Ø² Ø§Ù„Ù…ÙƒØ§Ù†ÙŠ)
                     final sortedRequests = List<RideRequest>.from(pendingRequests)..sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
                     final request = sortedRequests[index];
                     final currentFare = _driverCounterOffers[request.id] ?? request.proposedFare;
@@ -881,7 +881,8 @@ extension _RideFlowStepsExtension on _RideFlowScreenState {
     setState(() => isDriverOnline = value);
 
     if (value) {
-      final riderId = ref.read(authProvider).userId ?? 'demo-driver';
+      final riderId = ref.read(authProvider).userId;
+      if (riderId == null) return;
       _trackingService.startTracking(rideId: 'driver-$riderId', onLocationUpdate: (_) {});
       _autoOfflineTimer?.cancel();
       _autoOfflineTimer = Timer(const Duration(hours: 8), () {
@@ -1063,9 +1064,9 @@ extension _RideFlowStepsExtension on _RideFlowScreenState {
           child: FreeMapPreview(
             center: driverLocation ?? pickupLocation ?? const LatLng(24.7136, 46.6753),
             showPickupMarker: !isDriverMode && !isRideStarted, 
-            pickupLocation: isDriverMode ? (driverLocation ?? pickupLocation) : pickupLocation,
-            dropoffLocation: isDriverMode ? pickupLocation : driverLocation,
-            driverLocation: isDriverMode ? (driverLocation ?? pickupLocation) : driverLocation,
+            pickupLocation: pickupLocation,
+            dropoffLocation: dropoffLocation,
+            driverLocation: driverLocation ?? (isDriverMode ? pickupLocation : null),
             isRideStarted: isRideStarted,
             waitingRiderLocations: (isSharedRide && !isDriverMode && !isRideStarted) 
                 ? [const LatLng(36.7550, 3.0600)] // Example coordinates for the second rider
@@ -1142,18 +1143,10 @@ extension _RideFlowStepsExtension on _RideFlowScreenState {
                     ),
                   ],
                   const SizedBox(height: 8),
-                  if (!isDriverMode)
+                  if (!isDriverMode) ...[
                     Row(
                       children: [
-                        Expanded(child: ElevatedButton.icon(onPressed: () async {
-                          final url = Uri.parse('tel:0550000000');
-                          if (await canLaunchUrl(url)) await launchUrl(url, mode: LaunchMode.externalApplication);
-                        }, icon: const Icon(Icons.call, color: Colors.black), label: Text(tr('call_btn'), style: const TextStyle(color: Colors.black)), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFFD700)))),
-                        const SizedBox(width: 8),
-                        Expanded(child: OutlinedButton.icon(onPressed: () async {
-                          final url = Uri.parse('sms:0550000000');
-                          if (await canLaunchUrl(url)) await launchUrl(url, mode: LaunchMode.externalApplication);
-                        }, icon: const Icon(Icons.chat, color: Color(0xFFFFD700)), label: Text(tr('message_btn'), style: const TextStyle(color: Color(0xFFFFD700))), style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFFFFD700))))),
+                        Expanded(child: ElevatedButton.icon(onPressed: _callOpponent, icon: const Icon(Icons.call, color: Colors.black), label: Text(tr('call_btn'), style: const TextStyle(color: Colors.black)), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFFD700)))),
                         const SizedBox(width: 8),
                         Expanded(child: ElevatedButton.icon(
                           onPressed: _cancelRide, 
@@ -1163,6 +1156,8 @@ extension _RideFlowStepsExtension on _RideFlowScreenState {
                         )),
                       ],
                     ),
+                    _buildLiveChatUI(),
+                  ],
                   if (isDriverMode && isRideStarted) ...[
                     const SizedBox(height: 16),
                     const Text('Ù…Ø­Ø§ÙƒØ§Ø© Ø§Ù„Ù…Ø³Ø§ÙØ© Ù„Ù„ÙˆØµÙˆÙ„ (Ù„Ø§Ø®ØªØ¨Ø§Ø± Ù…ÙŠØ²Ø© Ø§Ù„Ø±Ø­Ù„Ø© Ø§Ù„ØªØ§Ù„ÙŠØ©):', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
@@ -1199,30 +1194,22 @@ extension _RideFlowStepsExtension on _RideFlowScreenState {
                 ],
               ),
             ),
-          ),
           if (isDriverMode)
             Column(
                       children: [
                         Row(
                           children: [
-                            Expanded(child: ElevatedButton.icon(onPressed: () async {
-                              final url = Uri.parse('tel:0550000000');
-                              if (await canLaunchUrl(url)) await launchUrl(url, mode: LaunchMode.externalApplication);
-                            }, icon: const Icon(Icons.call), label: Text(tr('call_btn')))),
-                            const SizedBox(width: 8),
-                            Expanded(child: OutlinedButton.icon(onPressed: () async {
-                              final url = Uri.parse('sms:0550000000');
-                              if (await canLaunchUrl(url)) await launchUrl(url, mode: LaunchMode.externalApplication);
-                            }, icon: const Icon(Icons.chat), label: Text(tr('message_btn')))),
+                            Expanded(child: ElevatedButton.icon(onPressed: _callOpponent, icon: const Icon(Icons.call, color: Colors.black), label: Text(tr('call_btn'), style: const TextStyle(color: Colors.black)), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFFD700)))),
                             const SizedBox(width: 8),
                             Expanded(child: ElevatedButton.icon(
                               onPressed: _cancelRide, 
-                              icon: const Icon(Icons.cancel), 
-                              label: Text(tr('cancel_btn')),
-                              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                              icon: const Icon(Icons.cancel, color: Colors.white), 
+                              label: Text(tr('cancel_btn'), style: const TextStyle(color: Colors.white)),
+                              style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade900),
                             )),
                           ],
                         ),
+                        _buildLiveChatUI(),
                         const SizedBox(height: 8),
                         if (selectedRequest != null)
                           Column(
@@ -1454,7 +1441,8 @@ extension _RideFlowStepsExtension on _RideFlowScreenState {
                     if (localPath != null && mounted) {
                       // Ù…Ø­Ø§ÙˆÙ„Ø© Ø±ÙØ¹ Ø§Ù„Ù…Ù„Ù Ø¥Ù„Ù‰ Supabase Storage
                       setState(() => isSendingVoice = true);
-                      final userId = ref.read(authProvider).userId ?? 'demo-user';
+                      final userId = ref.read(authProvider).userId;
+                      if (userId == null) return;
                       final rideId = currentRideId ?? 'local';
                       String voiceContent;
                       final uploadedUrl = await _rideService.uploadVoiceNote(
@@ -1502,7 +1490,8 @@ extension _RideFlowStepsExtension on _RideFlowScreenState {
                 onPressed: () {
                   final text = _chatController.text.trim();
                   if (text.isNotEmpty) {
-                    final userId = ref.read(authProvider).userId ?? 'demo-user';
+                    final userId = ref.read(authProvider).userId;
+                    if (userId == null) return;
                     final rideId = currentRideId ?? 'local';
                     // Ø¥Ø±Ø³Ø§Ù„ Ø§Ù„Ø±Ø³Ø§Ù„Ø© Ø§Ù„Ù†ØµÙŠØ© Ø¥Ù„Ù‰ Supabase
                     _rideService.sendMessage(
@@ -1577,7 +1566,7 @@ extension _RideFlowStepsExtension on _RideFlowScreenState {
                       );
                       await RideService.triggerSOS(
                         rideId: currentRideId ?? 'local',
-                        userId: 'demo-user', // would be ref.read(authProvider).userId
+                        userId: ref.read(authProvider).userId ?? '',
                         role: isDriverMode ? 'driver' : 'rider',
                         lat: (isDriverMode ? driverLocation?.latitude : pickupLocation?.latitude) ?? 0.0,
                         lng: (isDriverMode ? driverLocation?.longitude : pickupLocation?.longitude) ?? 0.0,
@@ -1785,13 +1774,12 @@ extension _RideFlowStepsExtension on _RideFlowScreenState {
             spacing: 10,
             runSpacing: 10,
             children: quickTags.map((tag) {
-              final isSelected = false; // Add state for tags later if needed
               return ChoiceChip(
-                label: Text(tag, style: TextStyle(color: isSelected ? Colors.black : Colors.white, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+                label: Text(tag, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.normal)),
                 selectedColor: const Color(0xFFFFD700),
                 backgroundColor: const Color(0xFF1E1E1E),
-                side: BorderSide(color: isSelected ? Colors.transparent : const Color(0xFFFFD700).withValues(alpha: 0.5)),
-                selected: isSelected,
+                side: BorderSide(color: const Color(0xFFFFD700).withValues(alpha: 0.5)),
+                selected: false,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                 onSelected: (_) {},
               );
@@ -2049,14 +2037,14 @@ extension _RideFlowStepsExtension on _RideFlowScreenState {
                   dense: true,
                   title: Text(tr('online_status'), style: const TextStyle(color: Colors.white)),
                   value: isDriverOnline,
-                  activeColor: const Color(0xFFFFD700),
+                  activeThumbColor: const Color(0xFFFFD700),
                   onChanged: (value) => _setDriverOnline(value),
                 ),
                 SwitchListTile(
                   dense: true,
                   title: Text(tr('notifications_setting'), style: const TextStyle(color: Colors.white)),
                   value: true,
-                  activeColor: const Color(0xFFFFD700),
+                  activeThumbColor: const Color(0xFFFFD700),
                   onChanged: (_) {},
                 ),
               ],
@@ -2091,5 +2079,170 @@ extension _RideFlowStepsExtension on _RideFlowScreenState {
     );
   }
 
+  Future<void> _callOpponent() async {
+    final tr = ref.read(translationProvider).tr;
+    if (currentRideId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('error_getting_phone'))));
+      return;
+    }
+    
+    final phone = await _rideService.getOpponentPhoneNumber(currentRideId!, isDriverMode);
+    if (phone != null && phone.isNotEmpty) {
+      final url = Uri.parse('tel:$phone');
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('error_getting_phone'))));
+      }
+    } else {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('error_getting_phone'))));
+    }
+  }
+
+  Widget _buildLiveChatUI() {
+    final tr = ref.watch(translationProvider).tr;
+    return Container(
+      margin: const EdgeInsets.only(top: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1E1E).withValues(alpha: 0.8),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.5)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFFFD700).withValues(alpha: 0.1),
+            blurRadius: 10,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+            decoration: const BoxDecoration(
+              border: Border(bottom: BorderSide(color: Color(0xFF333333))),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.chat_bubble_outline, color: Color(0xFFFFD700), size: 20),
+                const SizedBox(width: 8),
+                Text(tr('live_chat_title'), style: const TextStyle(color: Color(0xFFFFD700), fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+          SizedBox(
+            height: 150,
+            child: ListView.builder(
+              padding: const EdgeInsets.all(8),
+              reverse: true, // Display from bottom
+              itemCount: chatMessages.length,
+              itemBuilder: (context, index) {
+                final msg = chatMessages[chatMessages.length - 1 - index];
+                final isMe = msg.startsWith('أنت: ');
+                final displayMsg = msg.replaceFirst('أنت: ', '');
+                return Align(
+                  alignment: isMe ? Alignment.centerLeft : Alignment.centerRight,
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isMe ? const Color(0xFFB8860B).withValues(alpha: 0.3) : const Color(0xFF333333),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: isMe ? const Color(0xFFFFD700) : Colors.transparent),
+                    ),
+                    child: Text(displayMsg, style: const TextStyle(color: Colors.white, fontSize: 13)),
+                  ),
+                );
+              },
+            ),
+          ),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: Row(
+              children: [
+                _buildQuickReplyBtn('أنا قادم إليك'),
+                const SizedBox(width: 8),
+                _buildQuickReplyBtn('وصلت للموقع'),
+                const SizedBox(width: 8),
+                _buildQuickReplyBtn('في زحمة مرورية'),
+                const SizedBox(width: 8),
+                _buildQuickReplyBtn('أرجو الانتظار دقيقة'),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _chatController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: tr('type_message'),
+                      hintStyle: const TextStyle(color: Colors.white54),
+                      filled: true,
+                      fillColor: const Color(0xFF2A2A2A),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFFFFD700)),
+                  child: IconButton(
+                    icon: const Icon(Icons.send, color: Colors.black, size: 20),
+                    onPressed: () {
+                      if (_chatController.text.trim().isNotEmpty) {
+                        _sendChatMessage(_chatController.text.trim());
+                        _chatController.clear();
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickReplyBtn(String text) {
+    return InkWell(
+      onTap: () => _sendChatMessage(text),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: const Color(0xFF2A2A2A),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.3)),
+        ),
+        child: Text(text, style: const TextStyle(color: Color(0xFFFFD700), fontSize: 12)),
+      ),
+    );
+  }
+
+  Future<void> _sendChatMessage(String content) async {
+    final currentUserId = ref.read(authProvider).userId;
+    if (currentUserId == null) return;
+    if (currentRideId != null) {
+      await _rideService.sendMessage(
+        rideId: currentRideId!,
+        senderId: currentUserId,
+        content: content,
+        type: 'TEXT',
+      );
+    } else {
+      // Local fallback for demo
+      setState(() {
+        chatMessages.add('أنت: $content');
+      });
+    }
+  }
 }
 
