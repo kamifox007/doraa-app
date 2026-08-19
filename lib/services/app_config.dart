@@ -27,7 +27,10 @@ class AppConfig {
   );
 
   static bool get isSupabaseConfigured {
-    return false; // Force Demo Mode as requested
+    return supabaseUrl.isNotEmpty &&
+        effectiveSupabaseKey.isNotEmpty &&
+        !supabaseUrl.contains('your-project') &&
+        !effectiveSupabaseKey.contains('your-anon-key');
   }
 
   static bool get isStitchConfigured {

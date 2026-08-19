@@ -71,8 +71,7 @@ class _AuthFlowScreenState extends ConsumerState<AuthFlowScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'ÙˆØ¶Ø¹ ØªØ¬Ø±ÙŠØ¨ÙŠ: ÙŠÙ…ÙƒÙ†Ùƒ Ø§Ù„Ø§Ø³ØªÙ…Ø±Ø§Ø± ÙÙŠ ØªØµÙØ­ Ø§Ù„ÙˆØ§Ø¬Ù‡Ø§Øª Ø¨Ø¯ÙˆÙ† Supabase.',
-                          'ÙˆØ¶Ø¹ ØªØ¬Ø±ÙŠØ¨ÙŠ: ÙŠÙ…ÙƒÙ†Ùƒ Ø§Ù„Ø§Ø³ØªÙ…Ø±Ø§Ø± Ù ÙŠ ØªØµÙ Ø­ Ø§Ù„ÙˆØ§Ø¬Ù‡Ø§Øª Ø¨Ø¯ÙˆÙ† Supabase.',
+                          'وضع تجريبي: يمكنك الاستمرار في تصفح الواجهات بدون Supabase.',
                           style: TextStyle(color: Colors.orange.shade800, fontSize: 12, fontWeight: FontWeight.bold),
                         ),
                       ),

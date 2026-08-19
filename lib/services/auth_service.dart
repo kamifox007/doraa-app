@@ -6,7 +6,7 @@ import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'app_config.dart';
 
 class AuthService {
-  static final SupabaseClient client = Supabase.instance.client;
+  static SupabaseClient get client => Supabase.instance.client;
 
   void _requireConfigured() {
     if (!AppConfig.isSupabaseConfigured) {
@@ -241,7 +241,9 @@ class AuthService {
     await client.auth.signOut();
   }
 
-  User? get currentUser => client.auth.currentUser;
+  User? get currentUser => AppConfig.isSupabaseConfigured ? client.auth.currentUser : null;
 
-  Stream<AuthState> get authStateChanges => client.auth.onAuthStateChange;
+  Stream<AuthState> get authStateChanges => AppConfig.isSupabaseConfigured
+      ? client.auth.onAuthStateChange
+      : const Stream.empty();
 }
