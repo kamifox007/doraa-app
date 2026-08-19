@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'app_config.dart';
 
 // دالة لمعالجة رسائل الخلفية (يجب أن تكون خارج أي كلاس)
 @pragma('vm:entry-point')
@@ -63,10 +64,11 @@ class PushNotificationService {
   }
 
   Future<void> _saveTokenToDatabase(String token) async {
-    final userId = Supabase.instance.client.auth.currentUser?.id;
-    if (userId == null) return;
-
+    if (!AppConfig.isSupabaseConfigured) return;
     try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) return;
+
       await Supabase.instance.client
           .from('user_profiles')
           .update({'fcm_token': token})
